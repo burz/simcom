@@ -3,7 +3,7 @@ simcom - A compiler and interpreter for the SIMPLE language
 
 Author: Anthony Burzillo
 
-A product of [Peter Froelich's](http://gaming.jhu.edu/~phf/) Spring 2013 [Compilers and Interpreters class](http://gaming.jhu.edu/~phf/2013/spring/cs328/) at Johns Hopkins.
+A product of [Peter Fröhlich's](http://gaming.jhu.edu/~phf/) Spring 2013 [Compilers and Interpreters class](http://gaming.jhu.edu/~phf/2013/spring/cs328/) at Johns Hopkins.
 
 ******
 

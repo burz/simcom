@@ -1,23 +1,29 @@
-Author: Peter Froelich
+Author: Peter Fröhlich
 ----------------------
 
 Program = "PROGRAM" identifier ";" Declarations
   ["BEGIN" Instructions] "END" identifier "." .
 
-Declarations = { ConstDecl | TypeDecl | VarDecl } .
+Declarations = { ConstDecl | TypeDecl | VarDecl | ProcDecl} .
 ConstDecl = "CONST" {identifier "=" Expression ";"} .
 TypeDecl = "TYPE" {identifier "=" Type ";"} .
 VarDecl = "VAR" {IdentifierList ":" Type ";"} .
+ProcDecl = "PROCEDURE" identifier "(" [Formals] ")" [":" Type] ";"
+  { VarDecl } [ "BEGIN" Instructions ] [ "RETURN" Expression ]
+  "END" identifier ";" .
 
 Type = identifier | "ARRAY" Expression "OF" Type |
   "RECORD" {IdentifierList ":" Type ";"} "END" .
 
 Expression = ["+"|"-"] Term {("+"|"-") Term} .
 Term = Factor {("*"|"DIV"|"MOD") Factor} .
-Factor = integer | Designator | "(" Expression ")" .
+Factor = integer | Designator | "(" Expression ")" | Call .
+
+Formals = Formal { ";" Formal } .
+Formal = IdentifierList ":" Type .
 
 Instructions = Instruction {";" Instruction} .
-Instruction = Assign | If | Repeat | While | Read | Write .
+Instruction = Assign | If | Repeat | While | Read | Write | Call .
 Assign = Designator ":=" Expression .
 If = "IF" Condition "THEN" Instructions ["ELSE" Instructions] "END" .
 Repeat = "REPEAT" Instructions "UNTIL" Condition "END" .
@@ -25,9 +31,11 @@ While = "WHILE" Condition "DO" Instructions "END" .
 Condition = Expression ("="|"#"|"<"|">"|"<="|">=") Expression .
 Write = "WRITE" Expression .
 Read = "READ" Designator .
+Call = identifier "(" [Actuals] ")" .
 
 Designator = identifier Selector .
 Selector = {"[" ExpressionList "]" | "." identifier} .
+Actuals = ExpressionList .
 IdentifierList = identifier {"," identifier} .
 ExpressionList = Expression {"," Expression} .
 
