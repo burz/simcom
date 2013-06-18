@@ -1,46 +1,46 @@
 PROGRAM test;
-	CONST q = 6;
-	TYPE Q = RECORD a, b, c : RECORD d : INTEGER; END; END;
-	VAR x, y : Q;
-	VAR a : ARRAY 5 OF RECORD x : ARRAY 5 OF RECORD y : INTEGER; END; END;
-	VAR z : ARRAY 10 OF ARRAY 5 OF INTEGER;
-	TYPE X = INTEGER;
+  CONST q = 6;
+  TYPE Q = RECORD a, b, c : RECORD d : INTEGER; END; END;
+  VAR x, y : Q;
+  VAR a : ARRAY 5 OF RECORD x : ARRAY 5 OF RECORD y : INTEGER; END; END;
+  VAR z : ARRAY 10 OF ARRAY 5 OF INTEGER;
+  TYPE X = INTEGER;
 BEGIN
-	x.b.d := 99;
-	x.a.d := x.b.d;
-	y := x;
-	z[2, 4] := z[3, 2] + 90;
-	WRITE z[2, 4];
-	z[1] := z[5];
-	z[2, 4] := 78 - 8;
-	WRITE z[2, 4];
-	WRITE x.a.d;
-	WRITE y.a.d;
-	y.a.d := 2;
-	WRITE x.a.d;
-	WRITE y.a.d;
-	WRITE z[3, 2];
-	WRITE z[3, 2] + 90;
-	WRITE 15 MOD 4;
-	WRITE -((12 + 8) - 10) * 3 DIV y.a.d;
-	WRITE 15 * 2;
-	IF 5 > y.a.d THEN
-		WRITE 10101
-	END;
-	IF 7 > 45 THEN
-		WRITE 1000
-	ELSE
-		WRITE 505
-	END;
-	y.b.d := 0;
-	REPEAT
-		WRITE y.b.d;
-		y.b.d := y.b.d + 1
-	UNTIL y.b.d >= 11 END;
-	y.c.d := 99;
-	WHILE y.c.d > 50 DO
-		WRITE y.c.d;
-		y.c.d := y.c.d - 1
-	END
+  x.b.d := 99;
+  x.a.d := x.b.d;
+  y := x;
+  z[2, 4] := z[3, 2] + 90;
+  WRITE z[2, 4];
+  z[1] := z[5];
+  z[2, 4] := 78 - 8;
+  WRITE z[2, 4];
+  WRITE x.a.d;
+  WRITE y.a.d;
+  y.a.d := 2;
+  WRITE x.a.d;
+  WRITE y.a.d;
+  WRITE z[3, 2];
+  WRITE z[3, 2] + 90;
+  WRITE 15 MOD 4;
+  WRITE -((12 + 8) - 10) * 3 DIV y.a.d;
+  WRITE 15 * 2;
+  IF 5 > y.a.d THEN
+    WRITE 10101
+  END;
+  IF 7 > 45 THEN
+    WRITE 1000
+  ELSE
+    WRITE 505
+  END;
+  y.b.d := 0;
+  REPEAT
+    WRITE y.b.d;
+    y.b.d := y.b.d + 1
+  UNTIL y.b.d >= 11 END;
+  y.c.d := 99;
+  WHILE y.c.d > 50 DO
+    WRITE y.c.d;
+    y.c.d := y.c.d - 1
+  END
 END test.
 

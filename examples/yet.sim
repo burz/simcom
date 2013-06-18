@@ -1,8 +1,8 @@
 PROGRAM yet;
-	VAR x, y : INTEGER;
+  VAR x, y : INTEGER;
 BEGIN
-	x := 50;
-	y := 25;
-	WRITE x MOD y
+  x := 50;
+  y := 25;
+  WRITE x MOD y
 END yet.
 

@@ -1,22 +1,22 @@
 PROGRAM indie;
-	TYPE q = ARRAY 10 OF INTEGER;
-	TYPE r = ARRAY 10 OF q;
-	TYPE s = ARRAY 10 OF r;
-	TYPE t = ARRAY 10 OF s;
-	TYPE u = ARRAY 10 OF t;
-	VAR x : u;
-	VAR a, b, c, d, e : INTEGER;
+  TYPE q = ARRAY 10 OF INTEGER;
+  TYPE r = ARRAY 10 OF q;
+  TYPE s = ARRAY 10 OF r;
+  TYPE t = ARRAY 10 OF s;
+  TYPE u = ARRAY 10 OF t;
+  VAR x : u;
+  VAR a, b, c, d, e : INTEGER;
 BEGIN
-	a := 0;
-	b := 1;
-	c := 2;
-	d := 3;
-	e := 4;
-	x[0, 0, 0, 0, 0] := 98;
-	x[a, b, c, d, e] := 983;
-	WRITE x[a, b, c, d, e];
-	x[a, 4 DIV b, c, d MOD 2, e + 3] := 777;
-	WRITE x[a, 4 DIV b, c, d MOD 2, e + 3]
-	
+  a := 0;
+  b := 1;
+  c := 2;
+  d := 3;
+  e := 4;
+  x[0, 0, 0, 0, 0] := 98;
+  x[a, b, c, d, e] := 983;
+  WRITE x[a, b, c, d, e];
+  x[a, 4 DIV b, c, d MOD 2, e + 3] := 777;
+  WRITE x[a, 4 DIV b, c, d MOD 2, e + 3]
+  
 END indie.
 

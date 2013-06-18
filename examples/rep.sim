@@ -1,11 +1,11 @@
 PROGRAM rep;
-	VAR x, y, z : INTEGER;
-	TYPE arr = ARRAY 10 OF INTEGER;
-	VAR a : arr;
+  VAR x, y, z : INTEGER;
+  TYPE arr = ARRAY 10 OF INTEGER;
+  VAR a : arr;
 BEGIN
-	x := 0;
-	REPEAT
-		WRITE x;
-		x := x + 1
-	UNTIL x >= 10 END
+  x := 0;
+  REPEAT
+    WRITE x;
+    x := x + 1
+  UNTIL x >= 10 END
 END rep.

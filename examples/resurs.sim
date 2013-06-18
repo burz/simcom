@@ -1,19 +1,19 @@
 PROGRAM recurs;
-	VAR x : INTEGER;
+  VAR x : INTEGER;
 
-	PROCEDURE a() : INTEGER;
-		VAR y : INTEGER;
-	BEGIN
-		x := 76;
-		y := b();
-		RETURN y
-	END a;
+  PROCEDURE a() : INTEGER;
+    VAR y : INTEGER;
+  BEGIN
+    x := 76;
+    y := b();
+    RETURN y
+  END a;
 
-	PROCEDURE b() : INTEGER;
-	BEGIN
-		WRITE x;
-		RETURN 5
-	END b;
+  PROCEDURE b() : INTEGER;
+  BEGIN
+    WRITE x;
+    RETURN 5
+  END b;
 BEGIN
-	WRITE a()
+  WRITE a()
 END recurs.

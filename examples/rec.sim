@@ -1,19 +1,19 @@
 PROGRAM rec;
-	TYPE q = RECORD
-				x, y : INTEGER;
-			END;
-	TYPE qq = RECORD
-				m, n : q;
-			END;
-	VAR x : q;
-	VAR y : qq;
+  TYPE q = RECORD
+        x, y : INTEGER;
+      END;
+  TYPE qq = RECORD
+        m, n : q;
+      END;
+  VAR x : q;
+  VAR y : qq;
 BEGIN
-	x.x := 90;
-	x.y := 12;
-	y.m.x := 28;
-	y.n.x := 22;
-	WRITE x.x + x.y;
-	WRITE x.y - x.x;
-	WRITE y.m.x DIV y.m.x;
-	WRITE y.m.x MOD y.n.x
+  x.x := 90;
+  x.y := 12;
+  y.m.x := 28;
+  y.n.x := 22;
+  WRITE x.x + x.y;
+  WRITE x.y - x.x;
+  WRITE y.m.x DIV y.m.x;
+  WRITE y.m.x MOD y.n.x
 END rec.

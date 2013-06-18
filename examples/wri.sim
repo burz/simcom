@@ -1,10 +1,10 @@
 PROGRAM x;
-	VAR x : INTEGER;
+  VAR x : INTEGER;
 BEGIN
-	x := 90;
-	WRITE x;
-	x := 98;
-	WRITE x;
-	READ x;
-	WRITE x
+  x := 90;
+  WRITE x;
+  x := 98;
+  WRITE x;
+  READ x;
+  WRITE x
 END x.

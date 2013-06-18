@@ -1,16 +1,16 @@
 PROGRAM args;
-	VAR x : INTEGER;
-	TYPE q = ARRAY 10 OF INTEGER;
-	VAR y : q;
+  VAR x : INTEGER;
+  TYPE q = ARRAY 10 OF INTEGER;
+  VAR y : q;
 
-	PROCEDURE a(y, z : INTEGER; b : q);
-	BEGIN
-		WRITE b[3];
-		WRITE y;
-		WRITE z + 1
-	END a;
+  PROCEDURE a(y, z : INTEGER; b : q);
+  BEGIN
+    WRITE b[3];
+    WRITE y;
+    WRITE z + 1
+  END a;
 BEGIN
-	x := 8;
-	y[3] := -777;
-	a(x, 2, y)
+  x := 8;
+  y[3] := -777;
+  a(x, 2, y)
 END args.
