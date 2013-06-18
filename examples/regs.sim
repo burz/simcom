@@ -1,0 +1,5 @@
+PROGRAM regs;
+	VAR a, b, c, d, e, f : INTEGER;
+BEGIN
+	WRITE - (a + (b + (c + (d + (e + f)))))
+END regs.

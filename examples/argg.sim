@@ -1,0 +1,14 @@
+PROGRAM argg;
+	TYPE q = ARRAY 10 OF INTEGER;
+	VAR x : q;
+
+	PROCEDURE a(y : q) : INTEGER;
+	BEGIN
+		y[2] := 5;
+		RETURN 43
+	END a;
+BEGIN
+	x[1] := 9;
+	WRITE a(x);
+	WRITE x[2]
+END argg.

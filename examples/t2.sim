@@ -1,0 +1,44 @@
+PROGRAM smalltest;
+	CONST q = 10;
+	VAR x,y: INTEGER;
+	VAR a : ARRAY 10 OF ARRAY 20 OF INTEGER;
+	VAR z : ARRAY 20 OF INTEGER;
+BEGIN
+	WRITE x;
+	WRITE y;
+	x := 20;
+	WRITE x;
+	WRITE y;
+
+	WHILE x > 10 DO (* Fills half the array with numbers *)
+		z[x-1] := x;
+		WRITE 777;
+		x := x-1
+	END;
+	
+	WHILE x > 0 DO (* Fills other half of array with zero *)
+		z[x-1] := 0;
+		x := x-1
+	END;
+	
+	REPEAT (* Goes through array and prints 500 for half and 666 for other half *)
+		IF z[x] > 0 THEN
+			WRITE 500
+		ELSE
+			WRITE 666
+		END;
+		x := x + 1
+	UNTIL x > 19 END;
+
+	y := 5;
+
+	a[6][0] := 6;
+	a[7][0] := 7;
+	a[8][0] := 8;
+	a[9][0] := 9;
+	REPEAT (*Testing nested arrays *)
+		WRITE a[y+1][0];
+		y := y + 1
+	UNTIL y >= 9 END
+
+END smalltest.

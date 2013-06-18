@@ -1,0 +1,12 @@
+PROGRAM arr;
+	TYPE arr = ARRAY 10 OF INTEGER;
+	TYPE arr2 = ARRAY 10 OF arr;
+	VAR x : arr;
+	VAR y : arr2;
+BEGIN
+	x[1] := 3;
+	WRITE x[1];
+	y[6, 7] := 909;
+	WRITE y[0, 0];
+	WRITE y[6, 7]
+END arr.

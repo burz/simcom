@@ -1,0 +1,13 @@
+PROGRAM assi;
+	VAR a, y, z : INTEGER;
+BEGIN
+	a := -2;
+	y := 10;
+	z := 0;
+	WRITE a;
+	a := 2 * y + 90 - y;
+	a := 45 * z DIV 78;
+	WRITE a;
+	a := 342 * z + y;
+	WRITE a
+END assi.

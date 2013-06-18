@@ -1,0 +1,38 @@
+Author: Peter Froelich
+----------------------
+
+Program = "PROGRAM" identifier ";" Declarations
+  ["BEGIN" Instructions] "END" identifier "." .
+
+Declarations = { ConstDecl | TypeDecl | VarDecl } .
+ConstDecl = "CONST" {identifier "=" Expression ";"} .
+TypeDecl = "TYPE" {identifier "=" Type ";"} .
+VarDecl = "VAR" {IdentifierList ":" Type ";"} .
+
+Type = identifier | "ARRAY" Expression "OF" Type |
+  "RECORD" {IdentifierList ":" Type ";"} "END" .
+
+Expression = ["+"|"-"] Term {("+"|"-") Term} .
+Term = Factor {("*"|"DIV"|"MOD") Factor} .
+Factor = integer | Designator | "(" Expression ")" .
+
+Instructions = Instruction {";" Instruction} .
+Instruction = Assign | If | Repeat | While | Read | Write .
+Assign = Designator ":=" Expression .
+If = "IF" Condition "THEN" Instructions ["ELSE" Instructions] "END" .
+Repeat = "REPEAT" Instructions "UNTIL" Condition "END" .
+While = "WHILE" Condition "DO" Instructions "END" .
+Condition = Expression ("="|"#"|"<"|">"|"<="|">=") Expression .
+Write = "WRITE" Expression .
+Read = "READ" Designator .
+
+Designator = identifier Selector .
+Selector = {"[" ExpressionList "]" | "." identifier} .
+IdentifierList = identifier {"," identifier} .
+ExpressionList = Expression {"," Expression} .
+
+identifier = letter {letter | digit} .
+integer = digit {digit} .
+letter = "a" | "b" | .. | "z" | "A" | "B" | .. | "Z" .
+digit = "0" | "1" | .. | "9" .
+

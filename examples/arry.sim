@@ -1,0 +1,11 @@
+PROGRAM arr;
+	TYPE q = ARRAY 10 OF INTEGER;
+	TYPE qq = ARRAY 10 OF q;
+	VAR x1, x2 : q;
+	VAR y1, y2 : qq;
+BEGIN
+	x1[2] := 98;
+	y1[9, 2] := 29;
+	x2[0] := x1[2];
+	y2[3] := y1[9]
+END arr.

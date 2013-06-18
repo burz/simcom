@@ -1,0 +1,20 @@
+PROGRAM p2;
+	VAR x, y : INTEGER;
+BEGIN
+	y := 5;
+	x := 10;
+	WRITE x - 5;
+	WRITE 10 - y;
+	WRITE 5 + y;
+	WRITE y + 5;
+	WRITE 4 * y;
+	WRITE y * 4;
+	WRITE 0 * y;
+	WRITE 0 MOD y;
+	WRITE y * 0;
+	WRITE y * 2;
+	WRITE y * 4;
+	WRITE y * 8;
+	WRITE y * 16;
+	WRITE y * 9
+END p2.

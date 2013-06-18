@@ -1,0 +1,10 @@
+PROGRAM reco;
+	TYPE r = RECORD
+		x, y : INTEGER;
+		END;
+	VAR a : r;
+BEGIN
+	a.y := 9;
+	WRITE a.x;
+	WRITE a.y
+END reco.

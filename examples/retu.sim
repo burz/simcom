@@ -1,0 +1,10 @@
+PROGRAM retu;
+	VAR x : INTEGER;
+
+	PROCEDURE z() : INTEGER;
+	BEGIN
+		RETURN 4
+	END z;
+BEGIN
+	WRITE z()
+END retu.

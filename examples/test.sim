@@ -1,0 +1,17 @@
+PROGRAM test;
+	TYPE z = ARRAY 10 OF INTEGER;
+         q = ARRAY 10 OF z;
+	TYPE y = RECORD a, b : INTEGER;
+             c, d : q;
+             END;
+	VAR x : q;
+        r : y;
+BEGIN
+	r.d[1, 2] := 90;
+	x[2, 3] := r.d[1, 2];
+	WRITE x[2, 3];
+	x[1] := r.d[1];
+	WRITE x[1, 2];
+	WRITE -5 + 3 * 4 - 2
+END test.
+

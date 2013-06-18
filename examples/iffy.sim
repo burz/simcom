@@ -1,0 +1,10 @@
+PROGRAM iffy;
+	VAR x, y, z : INTEGER;
+BEGIN
+	x := 6;
+	IF x MOD 200 >= 56 THEN
+		WRITE 1
+	ELSE
+		WRITE 0
+	END
+END iffy.

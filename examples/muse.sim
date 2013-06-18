@@ -1,0 +1,17 @@
+PROGRAM muse;
+	VAR i : INTEGER;
+
+	PROCEDURE ule();
+		VAR x : INTEGER;
+	BEGIN
+		x := i;
+		WRITE x
+	END ule;
+BEGIN
+	i := 10;
+	WHILE i > 0 DO
+		ule();
+	i := i - 1
+	END;
+END muse.
+
