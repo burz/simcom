@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# parser.py
-
 import scanner
 import symbol_table
 import ast
@@ -26,53 +21,53 @@ class Parser(object):
     self.tokens = tokens
     self.graphical = graphical
     if graphical:
-      self.stack = [] # Holds the parent of the current node
-      self.number = 0 # The next node number to use
+      self.stack = []
+      self.number = 0
     self.create_symbol_table = create_symbol_table
     self.create_ast = ast
     if ast:
       self.create_symbol_table = True
     if create_symbol_table:
-      self.table = symbol_table.Symbol_table() # The symbol table of the program
-      self.identifiers = [] # Holds identifiers returned in an identifier list
-    self.position = 0 # The current position in the token list
-    self.current_depth = 0 # The current depth of the tree
+      self.table = symbol_table.Symbol_table()
+      self.identifiers = []
+    self.position = 0
+    self.current_depth = 0
     self.tree = []
     self.parsing_definitions = False
     self.forward_declarations = []
     self.type_checks = []
     self.integer_returns = []
-  def _remove_from_tree(self): # Removes the last element in the tree
+  def _remove_from_tree(self):
     self.tree.pop()
     if self.graphical:
       self.tree.pop()
       self.stack.pop()
       self.number -= 1
-  def _get_position(self): # Get the current token's position
+  def _get_position(self):
     return self.tokens[self.position].start_position, self.tokens[self.position].end_position
-  def _get_last_position(self): # Get the last token's position
+  def _get_last_position(self):
     return self.tokens[self.position - 1].start_position, self.tokens[self.position - 1].end_position
-  def _token_position(self): # Returns the current token's position
+  def _token_position(self):
     return self.tokens[self.position].start_position
-  def _token_type(self): # Returns the current token's type
+  def _token_type(self):
     return self.tokens[self.position].token_type
-  def _last_token_type(self): # Returns the last token's type
+  def _last_token_type(self):
     return self.tokens[self.position - 1].token_type
   def _get_token(self):
     return  self.tokens[self.position]
-  def _get_last_token(self): # Returns the last token
+  def _get_last_token(self):
     return self.tokens[self.position - 1]
-  def _get_parent(self): # Graphical mode: returns the parent of the current node
+  def _get_parent(self):
     if len(self.stack) == 0:
       return -1
-    while self.stack[len(self.stack) - 1][1] >= self.current_depth: # While the stack's top level is not a parent
+    while self.stack[len(self.stack) - 1][1] >= self.current_depth:
       self.stack.pop()
       if len(self.stack) == 0:
         return -1
     return self.stack[len(self.stack) - 1][0]
-  def _add_token(self): # Adds a token to the tree
+  def _add_token(self):
     if not self.graphical:
-      self.tree.append((False, self.tokens[self.position], self.current_depth)) # Format: (is_terminal, Token, depth)
+      self.tree.append((False, self.tokens[self.position], self.current_depth))
     else:
       label = "L" + str(self.number)
       self.number += 1
@@ -84,9 +79,9 @@ class Parser(object):
       if not last == -1:
         self.tree.append("{} -> {}".format(last, label))
     self.position += 1
-  def _add_non_terminal(self, string): # Adds a non-terminal to the tree
+  def _add_non_terminal(self, string):
     if not self.graphical:
-      self.tree.append((True, string, self.current_depth)) # Format: (not_terminal, string, depth)
+      self.tree.append((True, string, self.current_depth))
     else:
       label = "L" + str(self.number)
       self.number += 1
@@ -94,12 +89,12 @@ class Parser(object):
       last = self._get_parent()
       if not last == -1:
         self.tree.append("{} -> {}".format(last, label))
-      self.stack.append((label, self.current_depth)) # Keep track of the new parent
-  def _add_to_scope(self, name, value): # Add a declaration to the current scope
+      self.stack.append((label, self.current_depth))
+  def _add_to_scope(self, name, value):
     return self.table.get_current_scope().insert(name, value)
-  def _get_declaration(self, name): # Lookup a declaration in the symbol table
+  def _get_declaration(self, name):
     return self.table.get_current_scope().find(name)
-  def _Program(self): # Check to see if there is a valid Program structure
+  def _Program(self):
     if not self._token_type() == "PROGRAM":
       raise Parse_exception("PROGRAM is not declared")
     self._add_non_terminal("Program")
@@ -112,7 +107,7 @@ class Parser(object):
       raise Parse_exception("The Program declaration is not terminated with a ';'")
     self._add_token()
     if self.create_symbol_table:
-      self.table.push_scope() # Create the program scope
+      self.table.push_scope()
     self.definitions = True
     self._Declarations()
     self.definitions = False
@@ -152,7 +147,7 @@ class Parser(object):
     start, end = self._get_position()
     self._add_token()
     if self.create_symbol_table:
-      self.table.leave_scope() # Leave the program scope
+      self.table.leave_scope()
     if not self._Identifier():
       raise Parse_exception("There is no program specified to close after the END at ({}, {})".format(start, end))
     if not self._get_last_token().data == program_name:
@@ -166,14 +161,14 @@ class Parser(object):
         return False
       else:
         return ast.AST_tree(instructions)
-  def _Declarations(self): # Check to see if there is a valid Declarations structure
+  def _Declarations(self):
     self._add_non_terminal("Declarations")
     self.current_depth += 1
     while self._ConstDecl() or self._TypeDecl() or self._VarDecl() or self._ProcDecl():
       pass
     self.current_depth -= 1
     return True
-  def _ConstDecl(self): # Check to see if there is a valid ConstDecl structure
+  def _ConstDecl(self):
     if not self._token_type() == "CONST":
       return False
     self._add_non_terminal("ConstDecl")
@@ -208,7 +203,7 @@ class Parser(object):
           self._add_token()
     self.current_depth -= 1
     return True
-  def _TypeDecl(self): # Check to see if there is a valid TypeDecl structure
+  def _TypeDecl(self):
     if not self._token_type() == "TYPE":
       return False
     self._add_non_terminal("TypeDecl")
@@ -238,7 +233,7 @@ class Parser(object):
           self._add_token()
     self.current_depth -= 1
     return True
-  def _VarDecl(self): # Check to see if there is a valid VarDecl structure
+  def _VarDecl(self):
     if not self._token_type() == "VAR":
       return False
     self._add_non_terminal("VarDecl")
@@ -270,7 +265,7 @@ class Parser(object):
       identifiers = self._IdentifierList()
     self.current_depth -= 1
     return True 
-  def _Type(self): # Check to see if there is a valid Type structure
+  def _Type(self):
     self._add_non_terminal("Type")
     self.current_depth += 1
     if self._Identifier():
@@ -349,7 +344,7 @@ class Parser(object):
         return True
     else:
       return False
-  def _Expression(self): # Check to see if there is a valid Expression structure
+  def _Expression(self):
     self._add_non_terminal("Expression")
     self.current_depth += 1
     arithmetic = False
@@ -424,7 +419,7 @@ class Parser(object):
       return last_node
     else:
       return True
-  def _Term(self): # Check to see if there is a valid Term structure
+  def _Term(self):
     self._add_non_terminal("Term")
     self.current_depth += 1
     factor = self._Factor()
@@ -491,7 +486,7 @@ class Parser(object):
       self.current_depth -= 1
       self._remove_from_tree()
       return False
-  def _Factor(self): # Check to see if there is a valid Factor structure
+  def _Factor(self):
     self._add_non_terminal("Factor")
     self.current_depth += 1
     integer = self._Integer()
@@ -535,7 +530,7 @@ class Parser(object):
     self._remove_from_tree()
     self.current_depth -= 1
     return False
-  def _Instructions(self): # Check to see if there is a valid Instructions structure
+  def _Instructions(self):
     self._add_non_terminal("Instructions")
     self.current_depth += 1
     instruction = self._Instruction()
@@ -556,7 +551,7 @@ class Parser(object):
       return ast.Instructions(instructions[0].start_position, instructions[len(instructions) - 1].end_position, instructions)
     else:
       return True
-  def _Instruction(self): # Check to see if there is a valid Instruction structure
+  def _Instruction(self):
     self._add_non_terminal("Instruction")
     self.current_depth += 1
     If = self._If()
@@ -611,7 +606,7 @@ class Parser(object):
     self.current_depth -= 1
     self._remove_from_tree()
     return False
-  def _Assign(self): # Check to see if there is a valid Assign structure
+  def _Assign(self):
     self._add_non_terminal("Assign")
     self.current_depth += 1
     start = self._get_token().start_position
@@ -639,7 +634,7 @@ class Parser(object):
       return ast.Assign(designator.start_position, expression.end_position, designator, expression)
     else:
       return True
-  def _If(self): # Check to see if there is a valid If structure
+  def _If(self):
     if not self._token_type() == "IF":
       return False
     self._add_non_terminal("If")
@@ -672,7 +667,7 @@ class Parser(object):
       return ast.If(start, end, condition, instructions_true, instructions_false)
     else:
       return True
-  def _Repeat(self): # Check to see if there is a valid Repeat structure
+  def _Repeat(self):
     if not self._token_type() == "REPEAT":
       return False
     self._add_non_terminal("Repeat")
@@ -698,7 +693,7 @@ class Parser(object):
       return ast.Repeat(start, end, condition, instructions)
     else:
       return True
-  def _While(self): # Check to see if there is a valid While structure
+  def _While(self):
     if not self._token_type() == "WHILE":
       return False
     self._add_non_terminal("While")
@@ -740,7 +735,7 @@ class Parser(object):
       return ast.If(start, end, condition, instructions, False)
     else:
       return True
-  def _Condition(self): # Check to see if there is a valid Condition structure
+  def _Condition(self):
     self._add_non_terminal("Condition")
     self.current_depth += 1
     start, end = self._get_position()
@@ -766,7 +761,7 @@ class Parser(object):
       return ast.Condition(expression_left.start_position, expression_right.end_position, relation, expression_left, expression_right)
     else:
       return True
-  def _Write(self): # Check to see if there is a valid Write structure
+  def _Write(self):
     if not self._token_type() == "WRITE":
       return False
     start, end = self._get_position()
@@ -783,7 +778,7 @@ class Parser(object):
       return ast.Write(start, expression.end_position, expression)
     else: 
       return True
-  def _Read(self): # Check to see if there is a valid Read structure
+  def _Read(self):
     if not self._token_type() == "READ":
       return False
     read_start = self._get_token().start_position
@@ -801,7 +796,7 @@ class Parser(object):
       return ast.Read(read_start, location.end_position, location)
     else: 
       return True
-  def _Designator(self): # Check to see if there is a valid Designator structure
+  def _Designator(self):
     self._add_non_terminal("Designator")
     self.current_depth += 1
     if self.create_symbol_table:
@@ -834,13 +829,13 @@ class Parser(object):
       elif type(table_entry.type_object) is symbol_table.Record:
         last_type = True
       else:
-        last_type = False # The last type was an array
+        last_type = False
       variable = ast.Variable(start_position, end_position, name, table_entry)
       last_node = ast.Location(start_position, end_position, variable)
     selectors = self._Selector()
     if self.create_symbol_table and selectors:
       for selector in selectors:
-        if selector[0]: # The selector is a Field
+        if selector[0]:
           if type(last_node.child) is ast.Variable:
             if not type(last_node.child.table_entry.type_object) is symbol_table.Record:
               raise ast.AST_exception("The designator at ({}, {}) is not a record; it has no field {} at ({}, {})".format(last_node.start_position, last_node.end_position, selector[1], selector[2], selector[3]))
@@ -859,7 +854,7 @@ class Parser(object):
           variable = ast.Variable(selector[2], selector[3], selector[1], table_entry)
           last_node = ast.Field(last_node.start_position, selector[3], last_node, variable)
           last_type = True
-        else: # The selector is an Index
+        else:
           if not type(last_node.get_type()) is symbol_table.Array:
             raise ast.AST_exception("the index at ({}, {}) modifies a non-array object".format(selector[2], selector[3]))
           if type(last_node.child) is ast.Variable:
@@ -878,7 +873,7 @@ class Parser(object):
       return last_node
     else:
       return True
-  def _Selector(self): # Check to see if there is a valid Selector structure
+  def _Selector(self):
     self._add_non_terminal("Selector")
     self.current_depth += 1
     if self.create_symbol_table:
@@ -907,7 +902,7 @@ class Parser(object):
       return selectors
     else:
       return True
-  def _IdentifierList(self): # Check to see if there is a valid IdentifierList structure
+  def _IdentifierList(self):
     self._add_non_terminal("IdentifierList")
     self.current_depth += 1
     start, end = self._get_position()
@@ -924,7 +919,7 @@ class Parser(object):
       identifiers.append(self._get_last_token())
     self.current_depth -= 1
     return identifiers
-  def _ExpressionList(self): # Check to see if there is a valid ExpressionList structure
+  def _ExpressionList(self):
     self._add_non_terminal("ExpressionList")
     self.current_depth += 1
     start = self._get_token().start_position
@@ -952,13 +947,13 @@ class Parser(object):
       self._remove_from_tree()
       self.current_depth -= 1
       return False
-  def _Identifier(self): # Check to see if there is a valid Identifier structure
+  def _Identifier(self):
     if not self._token_type() == "identifier":
       return False
     data = self._get_token().data
     self._add_token()
     return data
-  def _Integer(self): # Check to see if there is a valid Integer structure
+  def _Integer(self):
     if not self._token_type() == "integer":
       return False
     self._add_token()
@@ -970,7 +965,7 @@ class Parser(object):
       return ast.Number(start, end, constant)
     else:
       return True
-  def _ProcDecl(self): # Check to see if there is a ProcDecl structure
+  def _ProcDecl(self):
     if not self._token_type() == "PROCEDURE":
       return False
     self._add_non_terminal("ProcDecl")
@@ -1047,7 +1042,7 @@ class Parser(object):
         previous = self._get_declaration(name)
         raise symbol_table.Symbol_table_exception("The declaration of {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(name, proc_start, end, previous.start_position, previous.end_position))
     return True
-  def _Formals(self): # Check to see if there is a Formals structure
+  def _Formals(self):
     self._add_non_terminal("Formals")
     self.current_depth += 1
     formal = self._Formal()
@@ -1072,7 +1067,7 @@ class Parser(object):
       return formals
     else:
       return True
-  def _Formal(self): # Check to see if there is a Formal structure
+  def _Formal(self):
     self._add_non_terminal("Formal")
     self.current_depth += 1
     identifiers = self._IdentifierList()
@@ -1094,7 +1089,7 @@ class Parser(object):
       return identifiers, type_object
     else:
       return True
-  def _Call(self): # Check to see if there is a Call structure
+  def _Call(self):
     self._add_non_terminal("Call")
     self.current_depth += 1
     call_start, call_end = self._get_position()
@@ -1140,7 +1135,7 @@ class Parser(object):
       return call
     else:
       return True
-  def _Actuals(self): # Check to see if there is an Actuals structure
+  def _Actuals(self):
     self._add_non_terminal("Actuals")
     self.current_depth += 1
     expressions = self._ExpressionList()
@@ -1159,10 +1154,6 @@ class Parser(object):
     else:
       return True
   def print_tree(self):
-    """Prints out either a parse tree or a dot syntax tree depending on
-    how the Parser was initialized
-
-    """
     if self.graphical:
       print "strict digraph CST {"
       for line in self.tree:
@@ -1175,13 +1166,6 @@ class Parser(object):
         else:
           print "  " * line[2] + line[1].__repr__()
   def parse(self):
-    """Parses the program and produces a tree
-
-    Raises Parse_exception if there is an error in the code
-
-    Returns a symbol table if create_symbol_table = True
-
-    """
     if self.create_ast:
       abstract_syntax_tree = self._Program()
     else:

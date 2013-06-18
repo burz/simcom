@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# code_generator.py
-
 import symbol_table
 import ast
 import code_library
@@ -11,15 +6,9 @@ integer_size = 8
 
 class Code_generator(object):
   def __init__(self, table, tree):
-    """Create a code generator
-
-    table: the symbol table for the code
-    tree: the abstract syntax tree for the code
-
-    """
     self.table = table
     self.tree = tree
-  def _create_location_evaluator(self, location): # Generate code to evaluate a location
+  def _create_location_evaluator(self, location):
     if type(location.child) is ast.Field:
       self._create_location_evaluator(location.child.location)
       self.code.append("\t\tpopq\t%rax")
@@ -57,7 +46,7 @@ class Code_generator(object):
         offset = location.child.table_entry.get_offset() * location.child.expression.child.table_entry.value
         self.code.append("\t\taddq\t${}, %rax".format(offset))
         self.code.append("\t\tpushq\t%rax")
-    else: # Variable
+    else:
       if not self.in_procedure:
         self.code.append("\t\tmovq\t${}_, %rax".format(location.child.name))
         self.code.append("\t\tpushq\t%rax")
@@ -86,7 +75,7 @@ class Code_generator(object):
         else:
           self.code.append("\t\tmovq\t${}_, %rax".format(location.child.name))
         self.code.append("\t\tpushq\t%rax")
-  def _create_expression_evaluator(self, expression): # Generate code to evaluate an expression
+  def _create_expression_evaluator(self, expression):
     if type(expression.child) is ast.Number:
       self.code.append("\t\tpushq\t${}".format(expression.child.table_entry.value))
     elif type(expression.child) is ast.Location:
@@ -166,7 +155,7 @@ class Code_generator(object):
     elif type(expression.child) is ast.Call:
       self._create_call(expression.child)
       self.code.append("\t\tpushq\t%rax")
-  def _create_condition_evaluator(self, condition): # Generate code to evaluate a condition
+  def _create_condition_evaluator(self, condition):
     self._create_expression_evaluator(condition.expression_left)
     if not type(condition.expression_right.child) is ast.Number:
       self._create_expression_evaluator(condition.expression_right)
@@ -194,7 +183,7 @@ class Code_generator(object):
     else: # >=
       self.code.append("\t\tjge\t\t_true{}_".format(self.node))
       self.code.append("\t\tjmp\t\t_false{}_".format(self.node))
-  def _create_assign(self, instruction): # Generate code to run an assign instruction
+  def _create_assign(self, instruction):
     self.code.append("__assign_at_{}_{}:".format(instruction.start_position, instruction.end_position))
     self._create_location_evaluator(instruction.location)
     count = instruction.location.get_size() / integer_size
@@ -216,7 +205,7 @@ class Code_generator(object):
       self.node += 1
     else:
       self.code.append("\t\tmovq\t%rcx, (%rax)")
-  def _create_if(self, instruction): # Generate code to run an if instruction
+  def _create_if(self, instruction):
     self.code.append("__if_at_{}_{}:".format(instruction.start_position, instruction.end_position))
     self._create_condition_evaluator(instruction.condition)
     self.code.append("_true{}_:".format(self.node))
@@ -229,7 +218,7 @@ class Code_generator(object):
     if instruction.instructions_false:
       self._generate_instructions(instruction.instructions_false.get_instructions())
       self.code.append("_end{}_:".format(node_number))
-  def _create_repeat(self, instruction): # Generate code to run a repeat instruction
+  def _create_repeat(self, instruction):
     label = "__repeat_at_{}_{}".format(instruction.start_position, instruction.end_position)
     self.code.append(label + ":")
     self._create_condition_evaluator(instruction.condition)
@@ -239,7 +228,7 @@ class Code_generator(object):
     self._generate_instructions(instruction.instructions.get_instructions())
     self.code.append("\t\tjmp\t\t{}".format(label))
     self.code.append("_true{}_:".format(node_number))
-  def _create_read(self, instruction): # Generate code to run a read instruction
+  def _create_read(self, instruction):
     self.code.append("__read_at_{}_{}:".format(instruction.start_position, instruction.end_position))
     self.code.append("\t\tpushq\t%rbx")
     self._create_location_evaluator(instruction.location)
@@ -248,7 +237,7 @@ class Code_generator(object):
     self.code.append("\t\tmovq\t%rax, (%rbx)")
     self.code.append("\t\tpopq\t%rbx")
     self.read_input = True
-  def _create_write(self, instruction): # Generate code to run a write instruction
+  def _create_write(self, instruction):
     self.code.append("__write_at_{}_{}:".format(instruction.start_position, instruction.end_position))
     self._create_expression_evaluator(instruction.expression)
     self.code.append("\t\tpopq\t%rdi")
@@ -268,7 +257,7 @@ class Code_generator(object):
       if call.procedure.formals:
         times = len(call.procedure.formals)
         self.code.append("\t\taddq\t${}, %rsp".format(times * integer_size))
-  def _generate_instructions(self, instructions): # Generate code to run a set of instructions
+  def _generate_instructions(self, instructions):
     for instruction in instructions:
       if type(instruction) is ast.Assign:
         self._create_assign(instruction)
@@ -282,7 +271,7 @@ class Code_generator(object):
         self._create_call(instruction)
       else: # Write
         self._create_write(instruction)
-  def _create_declarations(self): # Generate code for the declarations in a program
+  def _create_declarations(self):
     printed = False
     for name, type_object in self.table.scopes[1].symbols.iteritems():
       if not type(type_object) is symbol_table.Variable:
@@ -291,7 +280,7 @@ class Code_generator(object):
         self.code.append("\n\t.data")
         printed = True
       self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
-  def _link_library(self): # Add any necessary functions from the code library
+  def _link_library(self):
     zero_end = False
     error_integer_output = False
     write = False
@@ -358,11 +347,6 @@ class Code_generator(object):
     self.code.append("\t\tpopq\t%rbp")
     self.code.append("\t\tret")
   def generate(self):
-    """Generate the code for a program
-
-    Returns a list containing the code
-
-    """
     self.code = []
     self.read_only_declarations = []
     self.mod_zero = False

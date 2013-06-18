@@ -1,16 +1,4 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# optimize.py
-
 def consolidate_multiple_labels(code):
-  """Remove labels that point to the same instruction
-
-  code := A list containing the code for a program
-
-  Returns a list containing the optimized code
-
-  """
   new_code = []
   replacements = []
   for i, line in enumerate(code):
@@ -41,13 +29,6 @@ def consolidate_multiple_labels(code):
   return new_code
 
 def delete_unused_labels(code):
-  """Remove labels that are never used
-
-  code := A list containing the code for a program
-
-  Returns a list containing the optimized code
-
-  """
   used = []
   for line in code:
     line_split = line.split()

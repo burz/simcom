@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# interpreter.py
-
 import ast
 import symbol_table
 from environment import IntegerBox, Environment
@@ -15,12 +10,6 @@ class Interpreter_exception(Exception):
 
 class Interpreter(object):
   def __init__(self, environment, tree):
-    """Create an interpreter
-
-    environment := the environment to use
-    tree := the abstract syntax tree to execute
-
-    """
     self.base_environment = environment
     self.environment = environment
     self.tree = tree
@@ -52,7 +41,7 @@ class Interpreter(object):
     self.environment = old_environment
     if call.procedure.return_expression:
       return return_value
-  def _evaluate_expression(self, expression): # Evaluate an Expression node
+  def _evaluate_expression(self, expression):
     if type(expression.child) is ast.Number:
       return expression.child.table_entry.value
     elif type(expression.child) is ast.Location:
@@ -76,7 +65,7 @@ class Interpreter(object):
         return left_result % right_result
     elif type(expression.child) is ast.Call:
       return self._evaluate_call(expression.child)
-  def _evaluate_condition(self, condition): # Evaluate a Condition node
+  def _evaluate_condition(self, condition):
     left_result = self._evaluate_expression(condition.expression_left)
     right_result = self._evaluate_expression(condition.expression_right)
     if condition.relation.data == "=":
@@ -91,11 +80,11 @@ class Interpreter(object):
       return left_result <= right_result
     else: # >=
       return left_result >= right_result
-  def _get_box(self, location): # Get the box that a location node represents
+  def _get_box(self, location):
     self.stack.append(False)
     self.__get_box(location.child)
     return self.stack.pop()
-  def __get_box(self, location): # Find the box and return it on the stack
+  def __get_box(self, location):
     if type(location) is ast.Field:
       self.__get_box(location.location.child)
       record = self.stack.pop()
@@ -113,27 +102,27 @@ class Interpreter(object):
       if not environment:
         environment = self.environment
       self.stack.append(self.environment.get_box(location.name))
-  def _do_assign(self, node): # Execute an assign node
+  def _do_assign(self, node):
     box = self._get_box(node.location)
     if type(box) is IntegerBox:
       result = self._evaluate_expression(node.expression)
       box.value = result
     else:
       box.set_to(self._get_box(node.expression.child))
-  def _do_if(self, node): # Execute an if node
+  def _do_if(self, node):
     if self._evaluate_condition(node.condition):
       for instruction in node.instructions_true.get_instructions():
         self._do_instruction(instruction)
     elif node.instructions_false:
       for instruction in node.instructions_false.get_instructions():
         self._do_instruction(instruction)
-  def _do_repeat(self, node): # Execute a repeat node
+  def _do_repeat(self, node):
     while 1:
       for instruction in node.instructions.get_instructions():
         self._do_instruction(instruction)
       if self._evaluate_condition(node.condition):
         break
-  def _do_read(self, node): # Execute a read node
+  def _do_read(self, node):
     value = raw_input()
     try:
       value = int(value)
@@ -141,9 +130,9 @@ class Interpreter(object):
       raise Interpreter_exception("{} is not an integer".format(value))
     box = self._get_box(node.location)
     box.value = value
-  def _do_write(self, node): # Execute a write node
+  def _do_write(self, node):
     print self._evaluate_expression(node.expression)
-  def _do_instruction(self, instruction): # Execute an instruction
+  def _do_instruction(self, instruction):
     if type(instruction) is ast.Assign:
       self._do_assign(instruction)
     elif type(instruction) is ast.If:
@@ -157,9 +146,6 @@ class Interpreter(object):
     else: # Write
       self._do_write(instruction)
   def run(self):
-    """Run the program
-
-    """
     if self.tree:
       self.stack = []
       for instruction in self.tree.get_instructions():

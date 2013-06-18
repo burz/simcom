@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# code_library.py
-
 # Print out an error message when DIV by zero occurs
 #
 # %rdi := the starting position of the binary expression

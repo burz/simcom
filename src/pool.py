@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# pool.py
-
 caller = ["%rax", "%r10", "%r11", "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"]
 callee = ["%rbx", "%r12", "%r13", "%r14", "%r15"]
 

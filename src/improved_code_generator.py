@@ -1,8 +1,3 @@
-# Anthony Burzillo
-# aburzil1@jhu.edu
-#
-# improved_code_generator.py
-
 import ast
 import optimize
 import pool
@@ -10,13 +5,6 @@ import pool
 from code_generator import Code_generator, integer_size
 
 def log_2(power_of_two):
-  """Determines the base 2 logarithm of a number that is a power of two
-
-  power_of_two := a number x where x = 2**i for some i >= 0
-
-  Returns the logarithm
-
-  """
   power = 0
   while not power_of_two is 1:
     power += 1
@@ -25,12 +13,6 @@ def log_2(power_of_two):
 
 class Improved_code_generator(Code_generator):
   def __init__(self, table, tree):
-    """Create a code generator
-
-    table: the symbol table for the code
-    tree: the abstract syntax tree for the code
-
-    """
     self.table = table
     self.tree = tree
     self.registers = pool.Pool()
@@ -89,14 +71,14 @@ class Improved_code_generator(Code_generator):
       code += left_code + results[2]
     used_registers = right_used + left_used + [one, two]
     return one, two, used_registers, code
-  def _create_location_evaluator(self, location, register = "#@@"): # Generate code to evaluate a location
+  def _create_location_evaluator(self, location, register = "#@@"):
     offset, used_registers, code = self.__create_location_evaluator(location, register)
     if offset:
       code.append("\t\taddq\t${}, {}".format(offset, register))
       return offset, used_registers, code
     else:
       return "", used_registers, code
-  def __create_location_evaluator(self, location, register): # Helper function to evaluate a location
+  def __create_location_evaluator(self, location, register):
     used_registers = []
     if type(location.child) is ast.Field:
       offset_sum, used, code = self.__create_location_evaluator(location.child.location, register)
@@ -170,7 +152,7 @@ class Improved_code_generator(Code_generator):
         else:
           code.append("\t\tmovq\t${}_, {}".format(location.child.name, register))
       return 0, used_registers, code
-  def _create_expression_evaluator(self, expression, register = "#@@"): # Generate code to evaluate an expression
+  def _create_expression_evaluator(self, expression, register = "#@@"):
     used_registers = []
     code = []
     if type(expression.child) is ast.Number:
@@ -288,7 +270,7 @@ class Improved_code_generator(Code_generator):
       if not register == "%rax":
         code.append("\t\tmovq\t%rax, {}".format(register))
     return used_registers, code
-  def _create_condition_evaluator(self, condition): # Generate code to evaluate a condition
+  def _create_condition_evaluator(self, condition):
     code = []
     register = self.registers.get_caller()
     left_used, left_code = self._create_expression_evaluator(condition.expression_left)
@@ -323,7 +305,7 @@ class Improved_code_generator(Code_generator):
       code.append("\t\tjge\t\t_true{}_".format(self.node))
       code.append("\t\tjmp\t\t_false{}_".format(self.node))
     return used_registers, code
-  def _create_assign(self, instruction): # Generate code to run an assign instruction
+  def _create_assign(self, instruction):
     code = ["__assign_at_{}_{}:".format(instruction.start_position, instruction.end_position)]
     used_registers = []
     if type(instruction.expression.child) is ast.Number:
@@ -391,7 +373,7 @@ class Improved_code_generator(Code_generator):
         code.append("\t\tmovq\t{}, {}({})".format(source, location_offset, destination))
         self.registers.return_registers(2, code)
     return used_registers, code
-  def _create_if(self, instruction): # Generate code to run an if instruction
+  def _create_if(self, instruction):
     code = ["__if_at_{}_{}:".format(instruction.start_position, instruction.end_position)]
     used_registers, condition_code = self._create_condition_evaluator(instruction.condition)
     code += condition_code
@@ -410,7 +392,7 @@ class Improved_code_generator(Code_generator):
       code += instruction_code
       code.append("_end{}_:".format(node_number))
     return used_registers, code
-  def _create_repeat(self, instruction): # Generate code to run a repeat instruction
+  def _create_repeat(self, instruction):
     label = "__repeat_at_{}_{}".format(instruction.start_position, instruction.end_position)
     code = [label + ":"]
     used_registers, condition_code = self._create_condition_evaluator(instruction.condition)
@@ -424,7 +406,7 @@ class Improved_code_generator(Code_generator):
     code.append("\t\tjmp\t\t{}".format(label))
     code.append("_true{}_:".format(node_number))
     return used_registers, code
-  def _create_read(self, instruction): # Generate code to run a read instruction
+  def _create_read(self, instruction):
     code = ["__read_at_{}_{}:".format(instruction.start_position, instruction.end_position)]
     destination = self.registers.get_callee(code)
     offset, used, location_code = self._create_location_evaluator(instruction.location, destination)
@@ -434,7 +416,7 @@ class Improved_code_generator(Code_generator):
     self.registers.return_registers(1, code)
     self.read_input = True
     return pool.caller, code
-  def _create_write(self, instruction): # Generate code to run a write instruction
+  def _create_write(self, instruction):
     code = ["__write_at_{}_{}:".format(instruction.start_position, instruction.end_position)]
     self.registers.request_register("%rdi", code)
     used, expression_code = self._create_expression_evaluator(instruction.expression, "%rdi")
@@ -520,22 +502,15 @@ class Improved_code_generator(Code_generator):
     else: # Write
       used, code = self._create_write(instruction)
     return used, code
-  def _generate_instructions(self, instructions): # Generate code to run a set of instructions
+  def _generate_instructions(self, instructions):
     used_registers = []
     instruction_code = []
-#   print "START", self.registers.caller
     for instruction in instructions:
       used, code = self._generate_instruction(instruction)
       used_registers += used
       instruction_code += code
-#   print "END  ", self.registers.caller
     return used_registers, instruction_code
   def generate(self):
-    """Generate the code for a program
-
-    Returns a list containing the code
-
-    """
     self.code = []
     self.read_only_declarations = []
     self.mod_zero = False
@@ -575,6 +550,6 @@ class Improved_code_generator(Code_generator):
       for declaration in self.read_only_declarations:
         self.code.append(declaration)
     self.code = optimize.consolidate_multiple_labels(self.code)
-#   self.code = optimize.delete_unused_labels(self.code)
+    self.code = optimize.delete_unused_labels(self.code)
     return self.code
 
