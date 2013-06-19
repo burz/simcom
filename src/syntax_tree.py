@@ -4,13 +4,13 @@ class Node(object):
   cluster = -1
   def new_node(self):
     Node.node += 1
-    return Node.node
+    return "syntax_node{}".format(Node.node)
   def new_anchor(self):
     Node.anchor += 1
-    return Node.anchor
+    return "syntax_anchor{}".format(Node.anchor)
   def new_cluster(self):
     Node.cluster += 1
-    return Node.cluster
+    return "syntax_cluster{}".format(Node.cluster)
 
 class Instructions(Node):
   def __init__(self, instructions, line_number):
