@@ -62,15 +62,45 @@ class Expression(Node):
     self.line_number = line_number
 
 class Condition(Node):
-  def __init__(self, relation, expression_right, expression_left, line_number):
+  def __init__(self, relation, expression_left, expression_right, line_number):
     self.relation = relation
-    self.expression_right = expression_right
     self.expression_left = expression_left
+    self.expression_right = expression_right
     self.line_number = line_number
 
 class Variable(Node):
+  def __init__(self, name, table_entry, line_number):
+    self.name = name
+    self.table_entry = table_entry
+    self.line_number = line_number
+
 class Index(Node):
+  def __init__(self, location, expression, table_entry, line_number):
+    self.location = location
+    self.expression = expression
+    self.table_entry = table_entry
+    self.line_number = line_number
+
 class Field(Node):
+  def __init__(self, location, variable, table_entry, line_number):
+    self.location = location
+    self.variable = variable
+    self.table_entry = table_entry
+    self.line_number = line_number
+
 class Number(Node):
+  def __init__(self, table_entry, line_number):
+    self.table_entry = table_entry
+    self.line_number = line_number
+
 class Binary(Node):
+  def __init__(self, operator, expression_left, expression_right, line_number):
+    self.operator = operator
+    self.expression_left = expression_left
+    self.expression_right = expression_right
+    self.line_number = line_number
+
+class Syntax_tree(object):
+  def __init__(self, instructions):
+    self.instructions = instructions
 
