@@ -100,6 +100,12 @@ class Binary(Node):
     self.expression_right = expression_right
     self.line_number = line_number
 
+class Call(Node):
+  def __init__(self, table_entry, actual_expressions, line_number):
+    self.table_entry = table_entry
+    self.actual_expressions = actual_expressions
+    self.line_number = line_number
+
 class Syntax_tree(object):
   def __init__(self, instructions):
     self.instructions = instructions

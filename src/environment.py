@@ -3,7 +3,7 @@ class IntegerBox(object):
     self.value = 0
 
 class ArrayBox(object):
-  def __init__(self, size, box_type):
+  def __init__(self, size, ):
     self.size = size
     self.boxes
 

@@ -15,7 +15,7 @@ class Scanner_error(Exception):
   def __init__(self, error):
     self.error = error
   def __str__(self):
-    return 'error: ' + self.error
+    return "error: {}".format(self.error)
 
 class Scanner(object):
   def __init__(self, filename = False):

@@ -37,6 +37,9 @@ class Record(Entry):
     self.scope = scope
     self.line_number = line_number
 
+class Procedure(Entry):
+  pass
+
 class Scope(object):
   anchor = -1
   cluster = -1
