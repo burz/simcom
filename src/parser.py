@@ -61,14 +61,49 @@ class Parser(object):
   def Call(self):
   def Designator(self):
   def Selector(self):
+    selectors = []
+    while True:
+      if self.token_type == '[':
+        line_number = self.token_line()
+        self.next_token()
+        expr_list = self.ExpressionList()
+        if not expr_list:
+          raise Parser_error("The '[' on line {} is not followed by an ExpressionList".
+                              format(line_number))
+        if not self.token_type == ']':
+          raise Parser_error("The '[' on line {} is not closed by a ']'".format(
+                              line_number))
+        self.next_token()
+        selectors += expr_list
+      elif self.token_type == '.':
+        ident = self.identifier()
+        if not ident:
+          raise Parser_error("The '.' on line {} is not followed by an identifier".
+                              format(self.last_line()))
+        selectors += ident
+      else:
+        break
+    return selectors
   def Actuals(self):
+    return self.ExpressionList()
   def IdentifierList(self):
+    ident = self.identifier()
+    if not ident:
+      return False
+    identifiers = [ident]
+    while self.token_type() == ',':
+      self.next_token()
+      ident = self.identifier()
+      if not ident:
+        raise Parser_error("The ',' on line {} is not followed by an identifier".format(
+                           self.last_line()))
+    return identifiers
   def ExpressionList(self):
     expression = self.Expression()
     if not expression:
       return False
     expressions = [expression]
-    while self.current_token_type() == ',':
+    while self.token_type() == ',':
       self.next_token()
       expression = self.Expression()
       if not expression:
@@ -76,7 +111,7 @@ class Parser(object):
                            self.last_line()))
     return expressions
   def identifier(self):
-    if self.current_token_type() == "identifier":
+    if self.token_type() == "identifier":
       return True
     return False
   def integer(self):
