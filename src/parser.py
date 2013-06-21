@@ -38,13 +38,132 @@ class Parser(object):
       raise Parser_error("The expression to the left of the '{}' on line {} is not an INTEGER".
                          format(operator, line))
   def Program(self):
+    if not self.token_type() == 'PROGRAM':
+      return False
+    line = self.token_line()
+    self.next_token()
+    identifier = self.identifier()
+    if not identifier:
+      raise Parser_error("The 'PROGRAM' on line {} is not followed by an identifier".format(line))
+    if not self.token_type() == ';':
+      raise Parser_error("PROGRAM '{}' on line {} is not followed by a ';'".format(
+                         identifier.data, identifier.line))
+    self.next_token()
+    self.Declarations()
+    instructions = False
+    if self.token_type() == 'BEGIN':
+      begin_line = self.token_line()
+      self.next_token()
+      instructions = self.Instructions()
+      if not instructions:
+        raise Parser_error("The 'BEGIN' on line {} is not followed by any Instructions".format(
+                           begin_line))
+    if not self.token_type() == 'END':
+      raise Parser_error("The 'PROGRAM' on line {} is not terminated by an 'END'".format(line))
+    end_line = self.token_line()
+    self.next_token()
+    final_id = self.identifier()
+    if not final_id:
+      raise Parser_error("The 'END' on line {} is not followed by a program name to close".format(
+                         end_line))
+    if not final_id.data == identifier.data:
+      raise Parser_error(
+              "The name of the program on line {} does not match the name of it's closing on line {}".
+                format(identifier.line, final_id.line))
+    if not self.token_type() == '.':
+      raise Parser_error("The program closing on line {} is not followed by a '.'".format(end_line))
+    self.next_token()
+    return syntax_tree.Syntax_tree(instructions)
   def Declarations(self):
+    while self.ConstDecl() or self.TypeDecl() or self.VarDecl() or self.ProcDecl:
+      pass
   def ConstDecl(self):
   def TypeDecl(self):
   def VarDecl(self):
   def ProcDecl(self):
   def Type(self):
+    identifier = self.identifier():
+    if identifier:
+      definition = self.symbol_table.find(identifier.data)
+      if not type(definition) in [symbol_table.Integer, symbol_table.Array, symbol_table.Record]:
+        raise Parser_error("The identifier '{}' on line {} does not name a type".format(
+                           identifier.data, identifier.line))
+      return definition
+    if self.token_type() == 'ARRAY':
+      line = self.token_line()
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error("The 'ARRAY' on line {} is not followed by an Expression".format(line))
+      if not self.token_type() == 'OF':
+        raise Parser_error("The 'ARRAY' on line {} is not followed by a 'OF'".format(line))
+      of_line = self.token_line()
+      self.next_token()
+      type_object = self.Type()
+      if not type_object:
+        raise Parser_error("The 'OF' on line {} is not followed by a Type".format(of_line))
+# DEFAULT FOR NOW
+      size = 5
+      return symbol_table.Array(type_object, size, line)
+    if self.token_type() == 'RECORD':
+      line = self.token_line()
+      self.next_token()
+      self.symbol_table.push_scope()
+      while True:
+        identifiers = self.IdentifierList()
+        if not identifiers:
+          break
+        if not self.token_type() == ':':
+          raise Parser_error(
+                  "The IdentifierList following the 'RECORD' on line {} is not followed by a ':'".
+                    format(identifiers[0].line))
+        col_line = self.token_line()
+        self.next_token()
+        type_object = self.Type()
+        if not type_object:
+          raise Parser_error("The ':' on line {} is not followed by a Type".format(col_line))
+        for identifier in identifiers:
+          if not self.symbol_table.insert(identifier.data, type_object):
+            previous_definition = self.symbol_table.find(identifier.data)
+            raise Parser_error(
+                    "The definition of '{}' on line {} conflicts with the previous definition at {}".
+                      format(identifier.data, identifier.line, previous_definition.line))
+      scope = self.symbol_table.pop_scope()
+      return symbol_table.Record(scope, line)
+    return False
   def Expression(self):
+    if self.token_type() == '+':
+      line = self.token_line()
+      self.next_token()
+      term = self.Term()
+      if not term:
+        raise Parser_error("The '+' on line {} is not followed by a Term".format(line))
+    if self.token_type() == '-':
+      line = self.token_line()
+      self.next_token()
+      term = self.Term()
+      if not term:
+        raise Parser_error("The '-' on line {} is not followed by a Term".format(line))
+      constant = symbol_table.Constant(self.symbol_table.integer_singleton, 0, line)
+      number = syntax_tree.Number(constant, constant.line)
+      expression = syntax_tree.Expression(number, number.line)
+      binary = syntax_tree.Binary('-', expression, term, line)
+      term = syntax_tree.Expression(binary, binary.line)
+    else:
+      line = self.token_line
+      term = self.Term()
+      if not term:
+        return False
+    while self.token_type() in ['+', '-']:
+      op_line = self.token_line()
+      operator = self.token_type()
+      self.next_token()
+      new_term = self.Term()
+      if not new_term:
+        raise Parser_error("The '{}' on line {} is not followed by a Term".format(operator, op_line))
+      binary = syntax_tree.Binary(operator, term, new_term, op_line)
+      term = syntax_tree.Expression(binary, binary.line)
+    return term
   def Term(self):
     starting_position = self.position
     expression_left = self.Factor()
@@ -199,6 +318,7 @@ class Parser(object):
     if not expression_right:
       raise Parser_error("There is no Expression following the '{}' on line {}".format(
                          operator.data, operator.line))
+    type_check_binary_operation(relation, expression_left, expression_right)
     return syntax_tree.Condition(relation, expression_left, expression_right, line)
   def Write(self):
     if not self.token_type() == 'WRITE':
@@ -351,9 +471,11 @@ class Parser(object):
                            self.last_line()))
     return expressions
   def identifier(self):
-    if self.token_type() == "identifier":
-      return True
-    return False
+    if not self.token_type() == "identifier":
+      return False
+    identifier = self.token()
+    self.next_token()
+    return identifier
   def integer(self):
     if not self.token_type() == "integer":
       return False
