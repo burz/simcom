@@ -1,15 +1,15 @@
 import sys
 
 class Token(object):
-  def __init__(self, line_number, token_type, data = False):
-    self.line_number = line_number
+  def __init__(self, line, token_type, data = False):
+    self.line = line
     self.token_type = token_type
     self.data = data
   def __repr__(self):
     if self.data:
-      return "{}<{}>@{}".format(self.token_type, self.data, self.line_number)
+      return "{}<{}>@{}".format(self.token_type, self.data, self.line)
     else:
-      return "{}@{}".format(self.token_type, self.line_number)
+      return "{}@{}".format(self.token_type, self.line)
 
 class Scanner_error(Exception):
   def __init__(self, error):
@@ -27,7 +27,7 @@ class Scanner(object):
         raise Scanner_error("Could not open '{}'".format(filename))
     else:
       self.stream = sys.stdin
-    self.line_number = 1
+    self.line = 1
     self.eof = False
     self.reset_partial()
   def __del__(self):
@@ -39,9 +39,9 @@ class Scanner(object):
     self.partial = ""
   def create_token(self, token_type = False, set_partial = False):
     if token_type:
-      token = Token(self.line_number, token_type, self.partial)
+      token = Token(self.line, token_type, self.partial)
     else:
-      token = Token(self.line_number, self.partial)
+      token = Token(self.line, self.partial)
     self.integer_partial = False
     self.identifier_partial = False
     if set_partial:
@@ -63,14 +63,14 @@ class Scanner(object):
       return self.create_token(set_partial = c)
     elif self.partial == '(':
       if c == '*':
-        line_number = self.line_number
+        line = self.line
         last = False
         while True:
           c = self.stream.read(1)
           if not c:
-            raise Scanner_error("The comment on line {} is not closed".format(line_number))
+            raise Scanner_error("The comment on line {} is not closed".format(line))
           elif c == '\n':
-            self.line_number += 1
+            self.line += 1
           elif c == '*':
             last = True
           elif last and c == ')':
@@ -84,7 +84,7 @@ class Scanner(object):
         return False
       elif 'a' <= c <= 'z' or 'A' <= c <= 'Z':
         raise Scanner_error("The identifier '{}' on line {} starts with a number".format(
-                              self.partial, self.line_number))
+                              self.partial, self.line))
       else:
         return self.create_token('integer', c)
     elif self.identifier_partial:
@@ -98,7 +98,7 @@ class Scanner(object):
       else:
         return self.create_token('identifier', c)
     else:
-      raise Scanner_error("Urecognized symbol '{}' on line {}".format(self.partial, self.line_number))
+      raise Scanner_error("Urecognized symbol '{}' on line {}".format(self.partial, self.line))
   def generate_tokens(self):
     tokens = []
     while True:
@@ -117,7 +117,7 @@ class Scanner(object):
         return False
       if c in [' ', '\f', '\r', '\t', '\n']:
         if c == '\n':
-          self.line_number += 1
+          self.line += 1
         if self.partial:
           return self.partial_to_token()
         continue

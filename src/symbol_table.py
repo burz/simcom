@@ -13,29 +13,29 @@ class Entry(object):
     return "symbol_cluster{}".format(Entry.cluster)
 
 class Constant(Entry):
-  def __init__(self, type_object, value, line_number):
+  def __init__(self, type_object, value, line):
     self.type_object = type_object
     self.value = value
-    self.line_number = line_number
+    self.line = line
 
 class Variable(Entry):
-  def __init__(self, name, type_object, line_number):
+  def __init__(self, name, type_object, line):
     self.name = name
     self.type_object = type_object
-    self.line_number = line_number
+    self.line = line
 
 class Integer(Entry):
   pass
 
 class Array(Entry):
-  def __init__(self, type_object, size, line_number):
+  def __init__(self, type_object, size, line):
     self.type_object = type_object
     self.size = size
 
 class Record(Entry):
-  def __init__(self, scope, line_number):
+  def __init__(self, scope, line):
     self.scope = scope
-    self.line_number = line_number
+    self.line = line
 
 class Procedure(Entry):
   pass
@@ -65,11 +65,15 @@ class Scope(object):
     return self.symbols[name]
 
 class Symbol_table(object):
-  integer_singleton = Integer()
   def __init__(self):
+    self.integer_singleton = Integer()
     universal_scope = Scope(False)
-    universe.insert('Integer', Symbol_table.integer_singleton)
+    universe.insert('INTEGER', self.integer_singleton)
     self.scopes = [universal_scope]
+  def find(self, name):
+    return self.scopes[-1].find(name)
+  def insert(self, name, type_object):
+    return self.scopes[-1].insert(name, type_object)
   def current_scope(self):
     return self.scopes[-1]
   def push_scope(self):
