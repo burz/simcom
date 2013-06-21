@@ -38,7 +38,12 @@ class Record(Entry):
     self.line = line
 
 class Procedure(Entry):
-  pass
+  def __init__(self, name, formals, type_object, instructions, return_expression)
+    self.name = name
+    self.formals = formals
+    self.type_object = type_object
+    self.instructions = instructions
+    self.return_expression = return_expression
 
 class Scope(object):
   anchor = -1

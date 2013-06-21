@@ -52,8 +52,9 @@ class Write(Node):
     self.line = line
 
 class Location(Node):
-  def __init__(self, child, line):
+  def __init__(self, child, type_object, line):
     self.child = child
+    self.type_object = type_object
     self.line = line
 
 class Expression(Node):
@@ -102,9 +103,10 @@ class Binary(Node):
     self.line = line
 
 class Call(Node):
-  def __init__(self, definition, actual_expressions, line):
+  def __init__(self, definition, actual_expressions, type_object, line):
     self.definition = definition
     self.actual_expressions = actual_expressions
+    self.table_entry = type_object
     self.line = line
 
 class Syntax_tree(object):

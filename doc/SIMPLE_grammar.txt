@@ -30,9 +30,9 @@ Write = "WRITE" Expression .
 Read = "READ" Designator .
 Call = identifier "(" [Actuals] ")" .
 
-Actuals = ExpressionList .
 Formals = Formal { ";" Formal } .
 Formal = IdentifierList ":" Type .
+Actuals = ExpressionList .
 
 Designator = identifier Selector .
 Selector = {"[" ExpressionList "]" | "." identifier} .
