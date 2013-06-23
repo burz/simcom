@@ -78,7 +78,64 @@ class Parser(object):
     while self.ConstDecl() or self.TypeDecl() or self.VarDecl() or self.ProcDecl:
       pass
   def ConstDecl(self):
+    if not self.token_type() == 'CONST':
+      return False
+    self.next_token()
+    while True:
+      identifier = self.identifier()
+      if not identifier:
+        return True
+      if not self.token_type() == '=':
+        raise Parser_error("The constant declaration of '{}' on line {} is not followed by a '='".
+                            format(identifier.data, identifier.line))
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error(
+                "The constant declaration of '{}' on line {} is not followed by an Expression".
+                  format(identifier.data, identifier.line))
+      if not type(expression.type_object) is symbol_table.Integer:
+        raise Parser_error(
+             "The expression following the constant declaration of '{}' on line {} is not an INTEGER".
+               format(identifier.data, identifier.line))
+# default for now
+      value = 5
+      if not self.token_type() == ';':
+        raise Parser_error("The constant declaration of '{}' on line {} is not followed by a ';'".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      constant = symbol_table.Constant(self.symbol_table.integer_singleton, value, expression.line)
+      if not self.symbol_table.insert(identifier.data, constant):
+        previous_definition = self.symbol_table.find(identifier.data)
+        raise Parser_error(
+          "The constant delaration of '{}' on line {} conflicts with the previous declaration on line {}".
+            format(identifier.data, identifier.line, previous_definition.line))
+    return True
   def TypeDecl(self):
+    if not self.token_type() == 'TYPE':
+      return False
+    while True:
+      identifier = self.identifier()
+      if not identifier:
+        return True
+      if not self.token_type() == '=':
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a '='".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      type_object = self.Type()
+      if not type_object:
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a Type".
+                             format(identifier.data, identifier.line))
+      if not self.token_type() == ';':
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a ';'".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      if not self.symbol_table.insert(identifier.data, type_object):
+        previous_definition = self.symbol_table.find(identifier.data)
+        raise Parser_error(
+          "The type delaration of '{}' on line {} conflicts with the previous declaration on line {}".
+            format(identifier.data, identifier.line, previous_definition.line))
+    return True
   def VarDecl(self):
   def ProcDecl(self):
   def Type(self):
@@ -353,6 +410,10 @@ class Parser(object):
     line = self.token_line()
     self.next_token()
     actuals = self.Actuals()
+    if len(actuals) != len(definition.formals):
+      raise Parser_error(
+              "The call to '{}' on line {} does not have the correct number of argumnets ({} for {})".
+                format(identifier.data, identifier.line, len(actuals), len(definition.formals)))
     if not self.token_type == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
     self.next_token()
