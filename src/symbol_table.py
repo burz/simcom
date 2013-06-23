@@ -38,12 +38,13 @@ class Record(Entry):
     self.line = line
 
 class Procedure(Entry):
-  def __init__(self, name, formals, type_object, instructions, return_expression)
+  def __init__(self, name, formals, type_object, instructions, return_expression, line):
     self.name = name
     self.formals = formals
     self.type_object = type_object
     self.instructions = instructions
     self.return_expression = return_expression
+    self.line = line
 
 class Scope(object):
   anchor = -1
@@ -73,7 +74,7 @@ class Symbol_table(object):
   def __init__(self):
     self.integer_singleton = Integer()
     universal_scope = Scope(False)
-    universe.insert('INTEGER', self.integer_singleton)
+    universal_scope.insert('INTEGER', self.integer_singleton)
     self.scopes = [universal_scope]
   def find(self, name):
     return self.scopes[-1].find(name)

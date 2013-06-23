@@ -4,9 +4,12 @@ class Token(object):
   def __init__(self, line, token_type, data = False):
     self.line = line
     self.token_type = token_type
-    self.data = data
+    if not data:
+      self.data = token_type
+    else:
+      self.data = data
   def __repr__(self):
-    if self.data:
+    if self.token_type in ['integer', 'identifier']:
       return "{}<{}>@{}".format(self.token_type, self.data, self.line)
     else:
       return "{}@{}".format(self.token_type, self.line)
@@ -19,11 +22,12 @@ class Scanner_error(Exception):
 
 class Scanner(object):
   def __init__(self, filename = False):
-    self.file_input = (len(filename) is 0)
+    self.file_input = filename
     if filename:
       try:
         self.stream = open(filename, 'r')
       except IOError:
+        self.file_input = False
         raise Scanner_error("Could not open '{}'".format(filename))
     else:
       self.stream = sys.stdin
@@ -93,7 +97,7 @@ class Scanner(object):
         return False
       elif self.partial in ['PROGRAM', 'BEGIN', 'END', 'CONST', 'TYPE', 'VAR', 'PROCEDURE',
                             'RETURN', 'ARRAY', 'OF', 'RECORD', 'DIV', 'MOD', 'IF', 'THEN',
-                            'ELSE', 'REPEAT', 'UNTIL', 'WHILE', 'DO', 'WRITE', 'READ', 'INTEGER']:
+                            'ELSE', 'REPEAT', 'UNTIL', 'WHILE', 'DO', 'WRITE', 'READ']:
         return self.create_token(set_partial = c)
       else:
         return self.create_token('identifier', c)
