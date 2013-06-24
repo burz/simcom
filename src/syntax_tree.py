@@ -16,17 +16,34 @@ class Instructions(Node):
   def __init__(self, instructions, line):
     self.instructions = instructions
     self.line = line
+  def graphical(self):
+    first_node = self.instructions[0].graphical()
+    last_node = first_node
+    for instruction in instructions[1:]:
+      new_node = instruction.graphical()
+      print "{rank=same;", last_node, "->", new_node, "[label=\"next\"]}"
+    return first_node
 
 class Instruction(Node):
   def __init__(self, child, line):
     self.child = child
     self.line = line
+  def graphical(self):
+    return self.child.graphical()
 
 class Assign(Node):
   def __init__(self, location, expression, line):
     self.location = location
     self.expression = expression
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label=":=",shape=rectangle]'
+    location = self.location.graphical()
+    print node, '->', location, '[label="location"]'
+    expression = self.expression.graphical()
+    print node, '->', expression, '[label="expression"]'
+    return node
 
 class If(Node):
   def __init__(self, condition, instructions_true, instructions_false, line):
@@ -34,12 +51,31 @@ class If(Node):
     self.instructions_true = instructions_true
     self.instructions_false = instructions_false
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label="If",shape=rectangle]'
+    condition = self.condition.graphical()
+    print node, '->', condition, '[label="condition"]'
+    instructions_true = self.instructions_true.graphical()
+    print node, '->', instructions_true, '[label="true"]'
+    if self.instructions_false:
+      instructions_false = self.instructions_false.graphical()
+      print node, '->', instructions_false, '[label="false"]'
+    return node
 
 class Repeat(Node):
   def __init__(self, condition, instructions, line):
     self.condition = condition
     self.instructions = instructions
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label="Repeat",shape=rectangle]'
+    condition = self.condition.graphical()
+    print node, '->', condition, '[label="condition"]'
+    instructions = self.instructions.graphical()
+    print node, '->', instructions, '[label="instructions"]'
+    return node
 
 class Read(Node):
   def __init__(self, location, line):
