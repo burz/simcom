@@ -19,9 +19,10 @@ class Instructions(Node):
   def graphical(self):
     first_node = self.instructions[0].graphical()
     last_node = first_node
-    for instruction in instructions[1:]:
+    for instruction in self.instructions[1:]:
       new_node = instruction.graphical()
       print "{rank=same;", last_node, "->", new_node, "[label=\"next\"]}"
+      last_node = new_node
     return first_node
 
 class Instruction(Node):
@@ -123,7 +124,7 @@ class Condition(Node):
     self.line = line
   def graphical(self):
     node = self.new_node()
-    print node, '[label="' + self.operator + '",shape=rectangle]'
+    print node, '[label="' + self.relation + '",shape=rectangle]'
     left = self.expression_left.graphical()
     print node, '->', left, '[label="left"]'
     right = self.expression_right.graphical()
@@ -147,7 +148,7 @@ class Index(Node):
   def __init__(self, location, expression, type_object, line):
     self.location = location
     self.expression = expression
-    self.table_entry = type_object
+    self.type_object = type_object
     self.line = line
   def graphical(self):
     node = self.new_node()
@@ -204,7 +205,7 @@ class Call(Node):
   def __init__(self, definition, actuals, type_object, line):
     self.definition = definition
     self.actuals = actuals
-    self.table_entry = type_object
+    self.type_object = type_object
     self.line = line
   def graphical(self):
     node = self.new_node()
@@ -222,9 +223,13 @@ class Call(Node):
       print '}'
       for i, formal in enumerate(self.definition.formals):
         print node, '->', new_nodes[i], '[label="' + formal + '"]'
-      return node
+    return node
 
 class Syntax_tree(object):
   def __init__(self, instructions):
     self.instructions = instructions
+  def graphical(self):
+    print 'strict digraph X {'
+    self.instructions.graphical()
+    print '}'
 

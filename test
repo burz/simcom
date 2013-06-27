@@ -1,25 +1,28 @@
-#!/bin/bash
+#!/usr/bin/ruby
 
-if [ ! $1 ]; then
-  echo error: usage: ./test file_prefix
-elif [ ! -e $1.sim ]; then
-  echo error: $1.sim does not exist
-else
-  echo ":::::::::::::::::"
-  echo "   interpreter   "
-  echo ":::::::::::::::::"
-  ./sc -i $1.sim
-  echo ":::::::::::::::::"
-  echo "      lazy       "
-  echo ":::::::::::::::::"
-  ./sc $1.sim
-  gcc $1.s
-  ./a.out
-  echo ":::::::::::::::::"
-  echo "    improved     "
-  echo ":::::::::::::::::"
-  ./sc -x $1.sim
-  gcc $1.s
-  ./a.out
-fi
+test_names = Dir['examples/*.sim'].map { |s| s.match(/\/([A-Za-z0-9_]*)/)[1] }
+
+succesful_tests = 0
+failed_tests = 0
+
+test_names.each do |name|
+  error = `./sc #{ARGV[0]} examples/#{name}.sim 2>&1`
+  status = $?.exitstatus
+  if status == 0
+    puts ':::::::::::::::::::::::::::::::::::::::::::'
+    puts "Test '#{name}' was succesful."
+    succesful_tests += 1
+  else
+    puts ':::::::::::::::::::::::::::::::::::::::::::'
+    puts "Test '#{name}' failed with output:"
+    puts error
+    failed_tests += 1
+  end
+end
+
+total_tests = succesful_tests + failed_tests
+
+puts '+++++++++++++++++++++++++++++++++++++++++++'
+print "#{total_tests} tests #{(total_tests > 1) ? 'were' : 'was'}"
+puts " run with #{succesful_tests} succesful, #{failed_tests} failed."
 

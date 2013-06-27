@@ -120,10 +120,13 @@ class Scanner(object):
           return self.partial_to_token()
         return False
       if c in [' ', '\f', '\r', '\t', '\n']:
+        token = False
+        if self.partial:
+          token = self.partial_to_token()
         if c == '\n':
           self.line += 1
-        if self.partial:
-          return self.partial_to_token()
+        if token:
+          return token
         continue
       if len(self.partial) >= 1:
         token = self.partial_to_token(c)

@@ -1,7 +1,7 @@
 import symbol_table
 import syntax_tree
 
-negated_condition = { '=' : '#', '#' : '=', '<' : '>=', '>' : '<=', '<=' : '>', '>=' : '<' }
+negated_relation = { '=' : '#', '#' : '=', '<' : '>=', '>' : '<=', '<=' : '>', '>=' : '<' }
 
 class Parser_error(Exception):
   def __init__(self, error):
@@ -17,7 +17,7 @@ class Parser(object):
     instructions = self.Program()
     if not instructions:
       raise Parser_error("There is no 'PROGRAM' declared")
-    return syntax_tree.Syntax_tree(instructions)
+    return instructions, self.symbol_table
   def token(self):
     if self.position >= len(self.tokens):
       return False
@@ -258,7 +258,7 @@ class Parser(object):
       raise Parser_error("Expected a ';' following the closing of the procedure '{}' on line {}".
                            format(closing_name.data, closing_name.line))
     self.next_token()
-    procedure = symbol_table.Procedure(identifier.data, formals, type_object, instructions,
+    procedure = symbol_table.Procedure(identifier.data, formals, return_type_object, instructions,
                                        return_expression, line)
     if not self.symbol_table.insert(identifier.data, procedure):
       previous_definition = self.symbol_table.find(identifier.data)
@@ -332,9 +332,10 @@ class Parser(object):
         raise Parser_error("The '-' on line {} is not followed by a Term".format(line))
       constant = symbol_table.Constant(self.symbol_table.integer_singleton, 0, line)
       number = syntax_tree.Number(constant, constant.line)
-      expression = syntax_tree.Expression(number, number.line)
+      expression = syntax_tree.Expression(number, constant.type_object, number.line)
+      self.type_check_binary_operation('-', expression, term, line)
       binary = syntax_tree.Binary('-', expression, term, line)
-      term = syntax_tree.Expression(binary, binary.line)
+      term = syntax_tree.Expression(binary, constant.type_object, binary.line)
     else:
       line = self.token_line
       term = self.Term()
@@ -347,8 +348,9 @@ class Parser(object):
       new_term = self.Term()
       if not new_term:
         raise Parser_error("The '{}' on line {} is not followed by a Term".format(operator, op_line))
+      self.type_check_binary_operation(operator, term, new_term, line)
       binary = syntax_tree.Binary(operator, term, new_term, op_line)
-      term = syntax_tree.Expression(binary, binary.line)
+      term = syntax_tree.Expression(binary, self.symbol_table.integer_singleton, binary.line)
     return term
   def Term(self):
     expression_left = self.Factor()
@@ -396,7 +398,7 @@ class Parser(object):
       self.next_token()
       instruction = self.Instruction()
       if not instruction:
-        raise Parse_error("The ';' on line {} is not followed by any instructions".format(line))
+        raise Parser_error("The ';' on line {} is not followed by any instructions".format(line))
       instructions.append(instruction)
     return syntax_tree.Instructions(instructions, instructions[0].line)
   def Instruction(self):
@@ -519,7 +521,7 @@ class Parser(object):
                          expression.line))
     return syntax_tree.Write(expression, line)
   def Read(self):
-    if not self.token_type == 'READ':
+    if not self.token_type() == 'READ':
       return False
     line = self.token_line()
     self.next_token()
@@ -533,27 +535,29 @@ class Parser(object):
     if not identifier:
       return False
     definition = self.symbol_table.find(identifier.data)
-    if not self.token_type == '(' or not type(definition) is symbol_tree.Procedure:
+    if not self.token_type() == '(' or not type(definition) is symbol_table.Procedure:
       self.position = starting_position
       return False
     line = self.token_line()
     self.next_token()
     actuals = self.Actuals()
-    if len(actuals) != len(definition.formals):
+    length = len(actuals) if actuals else 0
+    definition_length = len(definition.formals) if definition.formals else 0
+    if length != definition_length:
       raise Parser_error(
-              "The call to '{}' on line {} does not have the correct number of argumnets ({} for {})".
-                format(identifier.data, identifier.line, len(actuals), len(definition.formals)))
-    if not self.token_type == ')':
+             "The call to '{}' on line {} does not have the correct number of argumnets ({} for {})".
+                format(identifier.data, identifier.line, length, definition_length))
+    if not self.token_type() == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
     self.next_token()
-    return syntax_tree.Call(definition, actual_expressions, definition.type_object, identifier.line)
+    return syntax_tree.Call(definition, actuals, definition.type_object, identifier.line)
   def Designator(self):
     identifier = self.identifier()
     if not identifier:
       return False
     table_entry = self.symbol_table.find(identifier.data)
     if not table_entry:
-      raise Parse_error("The identifier '{}' on line {} has not been defined".format(
+      raise Parser_error("The identifier '{}' on line {} has not been defined".format(
                          identifier.data, identifier.line))
     selectors = self.Selector()
     variable = syntax_tree.Variable(identifier.data, table_entry, identifier.line)
@@ -563,18 +567,18 @@ class Parser(object):
         definition = location.child.table_entry
       else:
         definition = location.child.type_object
-      if type(selector) is symbol_table.Expression:
+      if type(selector) is syntax_tree.Expression:
         if not type(definition) is symbol_table.Array:
-          raise Parse_error("The index on line {} does not follow an Array".format(selector.line))
-        index = syntax_tree.Index(location, expression, definition.type_object, expression.line)
-        location = syntax_tree.Location(index, index.line)
+          raise Parser_error("The index on line {} does not follow an Array".format(selector.line))
+        index = syntax_tree.Index(location, selector, definition.type_object, selector.line)
+        location = syntax_tree.Location(index, index.type_object, index.line)
       else:
         if not type(definition) is symbol_table.Record:
-          raise Parse_error("The field '{}' on line {} does not follow a Record".format(
+          raise Parser_error("The field '{}' on line {} does not follow a Record".format(
                             selector.data, selector.line))
         table_entry = definition.scope.find(selector.data)
         if not table_entry:
-          return Parse_error("The field '{}' on line {} has not been defined".format(
+          return Parser_error("The field '{}' on line {} has not been defined".format(
                              selector.data, selector.line))
         variable = Variable(selector.data, table_entry, selector.line)
         field = syntax_tree.Field(location, variable, table_entry, variable.line)
@@ -616,17 +620,17 @@ class Parser(object):
   def Selector(self):
     selectors = []
     while True:
-      if self.token_type == '[':
+      if self.token_type() == '[':
         line = self.token_line()
         self.next_token()
         expr_list = self.ExpressionList()
         if not expr_list:
           raise Parser_error("The '[' on line {} is not followed by an ExpressionList".format(line))
-        if not self.token_type == ']':
+        if not self.token_type() == ']':
           raise Parser_error("The '[' on line {} is not closed by a ']'".format(line))
         self.next_token()
         selectors += expr_list
-      elif self.token_type == '.':
+      elif self.token_type() == '.':
         self.next_token()
         identifier = self.identifier()
         if not identifier:
@@ -659,6 +663,7 @@ class Parser(object):
       if not expression:
         raise Parser_error("The ',' on line {} is not followed by an expression".format(
                            self.last_line()))
+      expressions.append(expression)
     return expressions
   def identifier(self):
     if not self.token_type() == 'identifier':

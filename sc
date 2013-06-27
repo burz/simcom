@@ -51,9 +51,22 @@ try:
       print token
   else:
     parser = Parser()
-    syntax_tree = parser.parse_tokens(tokens)
+    syntax_tree, symbol_table = parser.parse_tokens(tokens)
+    if not tree:
+#      symbol_table.graphical()
+      pass
+    elif tree and not interpreter and not lazy_compiler and not compiler:
+      syntax_tree.graphical()
+    elif interpreter:
+      pass
+    elif lazy_compiler:
+      pass
+    else:
+      pass
 except Scanner_error as error:
   sys.stderr.write(error.__str__() + "\n")
+  sys.exit(1)
 except Parser_error as error:
   sys.stderr.write(error.__str__() + "\n")
+  sys.exit(1)
 
