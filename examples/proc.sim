@@ -4,15 +4,15 @@ PROGRAM proc;
   PROCEDURE test(y : INTEGER) : INTEGER;
     VAR x : INTEGER;
   BEGIN
-    x := 9;
-    RETURN x
+    x := 9
+  RETURN x
   END test;
 
   PROCEDURE ret(y : INTEGER) : INTEGER;
   BEGIN
     q := 5;
-    num2();
-    RETURN y
+    num2()
+  RETURN y
   END ret;
 
   PROCEDURE num2();

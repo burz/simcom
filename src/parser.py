@@ -308,12 +308,21 @@ class Parser(object):
         type_object = self.Type()
         if not type_object:
           raise Parser_error("The ':' on line {} is not followed by a Type".format(col_line))
-        for identifier in identifiers:
-          if not self.symbol_table.insert(identifier.data, type_object):
-            previous_definition = self.symbol_table.find(identifier.data)
+        if not self.token_type() == ';':
+          raise Parser_error("The field declarations on line {} are not followed by a ';'".
+                               format(col_line))
+        self.next_token()
+        for ident in identifiers:
+          if not self.symbol_table.insert(ident.data, type_object):
+            previous_definition = self.symbol_table.find(ident.data)
             raise Parser_error(
                     "The definition of '{}' on line {} conflicts with the previous definition at {}".
-                      format(identifier.data, identifier.line, previous_definition.line))
+                      format(ident.data, ident.line, previous_definition.line))
+      if not self.token_type() == 'END':
+        raise Parser_error(
+                "The definition of the 'RECORD' on line {} was not terminated by an 'END'".
+                  format(line))
+      self.next_token()
       scope = self.symbol_table.pop_scope()
       return symbol_table.Record(scope, line)
     return False
@@ -578,11 +587,11 @@ class Parser(object):
                             selector.data, selector.line))
         table_entry = definition.scope.find(selector.data)
         if not table_entry:
-          return Parser_error("The field '{}' on line {} has not been defined".format(
+          raise Parser_error("The field '{}' on line {} has not been defined".format(
                              selector.data, selector.line))
-        variable = Variable(selector.data, table_entry, selector.line)
+        variable = syntax_tree.Variable(selector.data, table_entry, selector.line)
         field = syntax_tree.Field(location, variable, table_entry, variable.line)
-        location = syntax_tree.Location(field, field.line)
+        location = syntax_tree.Location(field, table_entry, field.line)
     return location
   def Formals(self):
     formal = self.Formal()

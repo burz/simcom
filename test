@@ -9,13 +9,11 @@ test_names.each do |name|
   error = `./sc #{ARGV[0]} examples/#{name}.sim 2>&1`
   status = $?.exitstatus
   if status == 0
-    puts ':::::::::::::::::::::::::::::::::::::::::::'
-    puts "Test '#{name}' was succesful."
+    puts "\e[32m$$  Test '#{name}' was successful.\e[0m"
     succesful_tests += 1
   else
-    puts ':::::::::::::::::::::::::::::::::::::::::::'
-    puts "Test '#{name}' failed with output:"
-    puts error
+    puts "\e[31m!!  Test '#{name}' failed with output:\e[0m"
+    puts "^^  #{error.chomp.gsub /\n/, "\n^^  "}"
     failed_tests += 1
   end
 end
