@@ -395,7 +395,8 @@ class Parser(object):
       return expression
     call = self.Call()
     if call:
-      return syntax_tree.Expression(call, call.type_object, call.line)
+      print call.type_object.type_object
+      return syntax_tree.Expression(call, call.type_object.type_object, call.line)
     return False
   def Instructions(self):
     instruction = self.Instruction()
@@ -494,6 +495,7 @@ class Parser(object):
       raise Parser_error("The 'DO' on line {} is not followed by any Instructions".format(do_line))
     if not self.token_type() == 'END':
       raise Parser_error("The 'WHILE' on line {} is not teminated by an 'END'".format(line))
+    self.next_token()
     repeat_relation = negated_relation[condition.relation]
     repeat_condition = syntax_tree.Condition(repeat_relation, condition.expression_right,
                                              condition.expression_right, condition.line)
