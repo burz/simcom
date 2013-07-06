@@ -20,8 +20,7 @@ class Instructions(Node):
     first_node = self.instructions[0].graphical()
     last_node = first_node
     for instruction in self.instructions[1:]:
-      new_node = instruction.graphical()
-      print "{rank=same;", last_node, "->", new_node, "[label=\"next\"]}"
+      print '{rank=same;' + last_node + ' -> ' + instruction.graphical(), '[label=\"next\"]}'
       last_node = new_node
     return first_node
 
@@ -40,10 +39,8 @@ class Assign(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label=":=",shape=rectangle]'
-    location = self.location.graphical()
-    print node, '->', location, '[label="location"]'
-    expression = self.expression.graphical()
-    print node, '->', expression, '[label="expression"]'
+    print node + ' -> ' + self.location.graphical(), '[label="location"]'
+    print node + ' -> ' + self.expression.graphical(), '[label="expression"]'
     return node
 
 class If(Node):
@@ -55,13 +52,10 @@ class If(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="If",shape=rectangle]'
-    condition = self.condition.graphical()
-    print node, '->', condition, '[label="condition"]'
-    instructions_true = self.instructions_true.graphical()
-    print node, '->', instructions_true, '[label="true"]'
+    print node + ' -> ' + self.condition.graphical(), '[label="condition"]'
+    print node + ' -> ' + self.instructions_true.graphical(), '[label="true"]'
     if self.instructions_false:
-      instructions_false = self.instructions_false.graphical()
-      print node, '->', instructions_false, '[label="false"]'
+      print node + ' -> ' + self.instructions_false.graphical(), '[label="false"]'
     return node
 
 class Repeat(Node):
@@ -72,10 +66,8 @@ class Repeat(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="Repeat",shape=rectangle]'
-    condition = self.condition.graphical()
-    print node, '->', condition, '[label="condition"]'
-    instructions = self.instructions.graphical()
-    print node, '->', instructions, '[label="instructions"]'
+    print node + ' -> ' + self.condition.graphical(), '[label="condition"]'
+    print node + ' -> ' + self.instructions.graphical(), '[label="instructions"]'
     return node
 
 class Read(Node):
@@ -85,8 +77,7 @@ class Read(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="Read",shape=rectangle]'
-    location = self.location.graphical()
-    print node, '->', location, '[label="location"]'
+    print node + ' -> ' + self.location.graphical(), '[label="location"]'
     return node
 
 class Write(Node):
@@ -96,8 +87,7 @@ class Write(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="Write",shape=rectangle]'
-    expression = self.expression.graphical()
-    print node, '->', expression, '[label="expression"]'
+    print node + ' -> ' + self.expression.graphical(), '[label="expression"]'
     return node
 
 class Location(Node):
@@ -125,10 +115,8 @@ class Condition(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="' + self.relation + '",shape=rectangle]'
-    left = self.expression_left.graphical()
-    print node, '->', left, '[label="left"]'
-    right = self.expression_right.graphical()
-    print node, '->', right, '[label="right"]'
+    print node + ' -> ' + self.expression_left.graphical(), '[label="left"]'
+    print node + ' -> ' + self.expression_right.graphical(), '[label="right"]'
     return node
 
 class Variable(Node):
@@ -153,10 +141,8 @@ class Index(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="Index",shape=rectangle]'
-    location = self.location.graphical()
-    print node, '->', location, '[label="location"]'
-    expression = self.expression.graphical()
-    print node, '->', expression, '[label="expression"]'
+    print node + ' -> ' + self.location.graphical(), '[label="location"]'
+    print node + ' -> ' + self.expression.graphical(), '[label="expression"]'
     return node
 
 class Field(Node):
@@ -168,10 +154,8 @@ class Field(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="Field",shape=rectangle]'
-    location = self.location.graphical()
-    print node, '->', location, '[label="location"]'
-    variable = self.variable.graphical()
-    print node, '->', variable, '[label="variable"]'
+    print node + ' -> ' + self.location.graphical(), '[label="location"]'
+    print node + ' -> ' + self.variable.graphical(), '[label="variable"]'
     return node
 
 class Number(Node):
@@ -195,10 +179,8 @@ class Binary(Node):
   def graphical(self):
     node = self.new_node()
     print node, '[label="' + self.operator + '",shape=rectangle]'
-    left = self.expression_left.graphical()
-    print node, '->', left, '[label="left"]'
-    right = self.expression_right.graphical()
-    print node, '->', right, '[label="right"]'
+    print node + ' -> ' + self.expression_left.graphical(), '[label="left"]'
+    print node + ' -> ' + self.expression_right.graphical(), '[label="right"]'
     return node
 
 class Call(Node):
@@ -214,8 +196,7 @@ class Call(Node):
     print procedure, '[label="' + self.definition.name + '"]'
     print node, '->', procedure, '[label="procedure"]'
     if self.actuals:
-      cluster = self.new_cluster()
-      print 'subgraph', cluster, '{'
+      print 'subgraph' + self.new_cluster() '{'
       new_nodes = []
       for actual in actuals:
         expression = actual.graphical()
