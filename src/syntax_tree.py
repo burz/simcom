@@ -150,7 +150,7 @@ class Field(Node):
   def __init__(self, location, variable, type_object, line):
     self.location = location
     self.variable = variable
-    self.table_entry = type_object
+    self.type_object = type_object
     self.line = line
   def graphical(self):
     node = self.new_node()
