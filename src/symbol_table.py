@@ -4,13 +4,13 @@ class Entry(object):
   cluster = -1
   def new_node(self):
     Entry.node += 1
-    return "symbol_node{}".format(Entry.node)
+    return "node_sym{}".format(Entry.node)
   def new_anchor(self):
     Entry.anchor += 1
-    return "symbol_anchor{}".format(Entry.anchor)
+    return "anchor_sym{}".format(Entry.anchor)
   def new_cluster(self):
     Entry.cluster += 1
-    return "symbol_cluster{}".format(Entry.cluster)
+    return "cluster_sym{}".format(Entry.cluster)
 
 class Constant(Entry):
   def __init__(self, type_object, value, line):
@@ -19,7 +19,7 @@ class Constant(Entry):
     self.line = line
   def graphical(self):
     node = self.new_node()
-    print node, '[label="' + self.value + '",shape=diamond]'
+    print node, "[label=\"{}\",shape=diamond]".format(self.value)
     print node + ' -> ' + self.type_object.graphical()
     return node
 
@@ -54,7 +54,7 @@ class Array(Entry):
     if self.printed:
       return self.printed
     node = self.new_node()
-    print node, '[label="Array\nlength:', self.length + '",shape=box,syle=rounded]'
+    print node, "[label=\"Array\\nlength: {}".format(self.size) + '",shape=box,syle=rounded]'
     print node + ' -> '+ self.type_object.graphical()
     self.printed = node
     return node
@@ -104,6 +104,7 @@ def compare_names(x, y):
       return -1
     elif x[i] > y[i]:
       return 1
+    i += 1
   if len(x) is len(y):
     return 0
   if len(x) < len(y):
@@ -112,17 +113,21 @@ def compare_names(x, y):
     return 1
 
 class Scope(object):
+  node = -1
   anchor = -1
   cluster = -1
   def __init__(self, parent = False):
     self.symbols = {}
     self.parent = parent
+  def new_node(self):
+    Scope.node += 1
+    return "node_scp{}".format(Scope.node)
   def new_anchor(self):
     Scope.anchor += 1
-    return "scope_anchor{}".format(Scope.anchor)
+    return "anchor_scp{}".format(Scope.anchor)
   def new_cluster(self):
     Scope.cluster += 1
-    return "scope_cluster{}".format(Scope.cluster)
+    return "cluster_scp{}".format(Scope.cluster)
   def insert(self, name, type_object):
     if name in self.symbols:
       return False
@@ -139,7 +144,7 @@ class Scope(object):
     connections = []
     for key in sorted(self.symbols, compare_names):
       node = self.new_node()
-      nodes.append(node + '[label="' + key + '",shape=box,color=white,fontcolor=black]')
+      nodes.append(node + ' [label="' + key + '",shape=box,color=white,fontcolor=black]')
       connections.append(node + ' -> ' + self.symbols[key].graphical())
     print 'subgraph', self.new_cluster(), '{'
     anchor = self.new_anchor()
@@ -157,6 +162,7 @@ class Symbol_table(object):
     universal_scope = Scope(False)
     universal_scope.insert('INTEGER', self.integer_singleton)
     self.scopes = [universal_scope]
+    self.scopes.append(Scope(universal_scope))
   def find(self, name):
     return self.scopes[-1].find(name)
   def insert(self, name, type_object):
@@ -168,7 +174,7 @@ class Symbol_table(object):
   def pop_scope(self):
     return self.scopes.pop()
   def graphical(self):
-    print 'strict digraph X {'
-      self.scopes[1].graphical()
+    print 'Digraph X {'
+    self.scopes[1].graphical()
     print '}'
 

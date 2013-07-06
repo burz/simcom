@@ -662,6 +662,7 @@ class Parser(object):
       if not identifier:
         raise Parser_error("The ',' on line {} is not followed by an identifier".format(
                            self.last_line()))
+      identifiers.append(identifier)
     return identifiers
   def ExpressionList(self):
     expression = self.Expression()

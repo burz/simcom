@@ -53,7 +53,7 @@ try:
     parser = Parser()
     syntax_tree, symbol_table = parser.parse_tokens(tokens)
     if not tree:
-#      symbol_table.graphical()
+      symbol_table.graphical()
       pass
     elif tree and not interpreter and not lazy_compiler and not compiler:
       syntax_tree.graphical()

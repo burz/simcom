@@ -4,13 +4,13 @@ class Node(object):
   cluster = -1
   def new_node(self):
     Node.node += 1
-    return "syntax_node{}".format(Node.node)
+    return "node_syn{}".format(Node.node)
   def new_anchor(self):
     Node.anchor += 1
-    return "syntax_anchor{}".format(Node.anchor)
+    return "anchor_syn{}".format(Node.anchor)
   def new_cluster(self):
     Node.cluster += 1
-    return "syntax_cluster{}".format(Node.cluster)
+    return "cluster_syn{}".format(Node.cluster)
 
 class Instructions(Node):
   def __init__(self, instructions, line):
@@ -20,7 +20,8 @@ class Instructions(Node):
     first_node = self.instructions[0].graphical()
     last_node = first_node
     for instruction in self.instructions[1:]:
-      print '{rank=same;' + last_node + ' -> ' + instruction.graphical(), '[label=\"next\"]}'
+      new_node = instruction.graphical()
+      print '{rank=same; ' + last_node + ' -> ' + new_node, '[label=\"next\"]}'
       last_node = new_node
     return first_node
 
@@ -196,7 +197,7 @@ class Call(Node):
     print procedure, '[label="' + self.definition.name + '"]'
     print node, '->', procedure, '[label="procedure"]'
     if self.actuals:
-      print 'subgraph' + self.new_cluster() '{'
+      print 'subgraph' + self.new_cluster(), '{'
       new_nodes = []
       for actual in actuals:
         expression = actual.graphical()
