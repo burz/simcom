@@ -17,25 +17,61 @@ class Constant(Entry):
     self.type_object = type_object
     self.value = value
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label="' + self.value + '",shape=diamond]'
+    print node + ' -> ' + self.type_object.graphical()
+    return node
 
 class Variable(Entry):
   def __init__(self, name, type_object, line):
     self.name = name
     self.type_object = type_object
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label="",shape=circle]'
+    print node + ' -> ' + self.type_object.graphical()
+    return node
 
 class Integer(Entry):
-  pass
+  def __init__(self):
+    self.printed = False
+  def graphical(self):
+    if self.printed:
+      return self.printed
+    node = self.new_node()
+    print node, '[label="Integer",shape=box,style=rounded]'
+    self.printed = node
+    return node
 
 class Array(Entry):
   def __init__(self, type_object, size, line):
     self.type_object = type_object
     self.size = size
+    self.printed = False
+  def graphical(self):
+    if self.printed:
+      return self.printed
+    node = self.new_node()
+    print node, '[label="Array\nlength:', self.length + '",shape=box,syle=rounded]'
+    print node + ' -> '+ self.type_object.graphical()
+    self.printed = node
+    return node
 
 class Record(Entry):
   def __init__(self, scope, line):
     self.scope = scope
     self.line = line
+    self.printed = False
+  def graphical(self):
+    if self.printed:
+      return self.printed
+    node = self.new_node()
+    print node, '[label="Record",shape=box,style=rounded]'
+    print node + ' -> ' + self.scope.graphical()
+    self.printed = node
+    return node
 
 class Procedure(Entry):
   def __init__(self, name, formals, type_object, instructions, return_expression, line):
@@ -45,6 +81,35 @@ class Procedure(Entry):
     self.instructions = instructions
     self.return_expression = return_expression
     self.line = line
+  def graphical(self):
+    node = self.new_node()
+    print node, '[label="' + self.name + '"]'
+    print node + ' -> ' + self.type_object.graphical(), '[label=returns]'
+    last_node = False
+    if self.formals:
+      for formal in self.formals:
+        new_node = self.new_node()
+        print new_node, '[label="' + formal + '",shape=circle]'
+        if not last_node:
+          print node, '->', new_node, '[label="formals"]'
+        else:
+          print '{rank=same;', last_node, '->', new_node + '}'
+        last_node = new_node
+    return node
+
+def compare_names(x, y):
+  i = 0
+  while len(x) > i and len(y) > i:
+    if x[i] < y[i]:
+      return -1
+    elif x[i] > y[i]:
+      return 1
+  if len(x) is len(y):
+    return 0
+  if len(x) < len(y):
+    return -1
+  else:
+    return 1
 
 class Scope(object):
   anchor = -1
@@ -69,6 +134,22 @@ class Scope(object):
         return False
       return self.parent.find(name)
     return self.symbols[name]
+  def graphical(self):
+    nodes = []
+    connections = []
+    for key in sorted(self.symbols, compare_names):
+      node = self.new_node()
+      nodes.append(node + '[label="' + key + '",shape=box,color=white,fontcolor=black]')
+      connections.append(node + ' -> ' + self.symbols[key].graphical())
+    print 'subgraph', self.new_cluster(), '{'
+    anchor = self.new_anchor()
+    print anchor, '[label="",style=invis]'
+    for node in nodes:
+      print node
+    print '}'
+    for connection in connections:
+      print connection
+    return anchor
 
 class Symbol_table(object):
   def __init__(self):
@@ -86,4 +167,8 @@ class Symbol_table(object):
     self.scopes.append(Scope(self.scopes[-1]))
   def pop_scope(self):
     return self.scopes.pop()
+  def graphical(self):
+    print 'strict digraph X {'
+      self.scopes[1].graphical()
+    print '}'
 
