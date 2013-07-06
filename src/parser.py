@@ -70,7 +70,7 @@ class Parser(object):
                          end_line))
     if not final_id.data == identifier.data:
       raise Parser_error(
-              "The name of the program on line {} does not match the name of it's closing on line {}".
+             "The name of the program on line {} does not match the name of it's closing on line {}".
                 format(identifier.line, final_id.line))
     if not self.token_type() == '.':
       raise Parser_error("The program closing on line {} is not followed by a '.'".format(end_line))
@@ -392,6 +392,7 @@ class Parser(object):
         raise Parser_error("The '(' on line {} is not followed by an Expression".format(line))
       if not self.token_type() == ')':
         raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
+      self.next_token()
       return expression
     call = self.Call()
     if call:
