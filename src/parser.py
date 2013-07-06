@@ -14,6 +14,7 @@ class Parser(object):
     self.tokens = tokens
     self.symbol_table = symbol_table.Symbol_table()
     self.position = 0
+    self.in_expression = False
     instructions = self.Program()
     if not instructions:
       raise Parser_error("There is no 'PROGRAM' declared")
@@ -77,8 +78,21 @@ class Parser(object):
     self.next_token()
     return syntax_tree.Syntax_tree(instructions)
   def Declarations(self):
+    self.in_procedure = False
+    self.forward_declarations = {}
+    self.call_type_checks = []
+    self.argument_number_checks = []
     while self.ConstDecl() or self.TypeDecl() or self.VarDecl() or self.ProcDecl():
       pass
+    if self.forward_declarations:
+      error = ''
+      for name, call in self.forward_declarations:
+        error += "       The function '{}' on line {} has not been defined\n".format(name, call.line)
+      raise Parser_error(error[7:-1])
+    for check in self.call_type_checks:
+      if not type(check.type_object) is symbol_table.Integer:
+        raise Parser_error("The call to '{}' on line {} must result in an INTEGER".format(
+                             check.definition.name, check.line))
   def ConstDecl(self):
     if not self.token_type() == 'CONST':
       return False
@@ -98,7 +112,7 @@ class Parser(object):
                   format(identifier.data, identifier.line))
       if not type(expression.type_object) is symbol_table.Integer:
         raise Parser_error(
-             "The expression following the constant declaration of '{}' on line {} is not an INTEGER".
+            "The expression following the constant declaration of '{}' on line {} is not an INTEGER".
                format(identifier.data, identifier.line))
 # default for now
       value = 5
@@ -189,6 +203,7 @@ class Parser(object):
   def ProcDecl(self):
     if not self.token_type() == 'PROCEDURE':
       return False
+    self.in_procedure = True
     line = self.token_line()
     self.next_token()
     identifier = self.identifier()
@@ -266,6 +281,17 @@ class Parser(object):
                            identifier.data, line) +
                          "conflicts with the previous declaration on line {}".format(
                            previous_definition.line))
+    self.in_procedure = False
+    if self.forward_declarations:
+      delete = []
+      for name, calls in self.forward_declarations.iteritems():
+        if name == identifier.data:
+          for call in calls:
+            call.definition = procedure
+            call.type_object = return_type_object
+          delete.append(name)
+      for name in delete:
+        del self.forward_declarations[name]
     return True
   def Type(self):
     identifier = self.identifier()
@@ -327,6 +353,7 @@ class Parser(object):
       return symbol_table.Record(scope, line)
     return False
   def Expression(self):
+    self.in_expression = True
     if self.token_type() == '+':
       line = self.token_line()
       self.next_token()
@@ -349,6 +376,7 @@ class Parser(object):
       line = self.token_line
       term = self.Term()
       if not term:
+        self.in_expression = False
         return False
     while self.token_type() in ['+', '-']:
       op_line = self.token_line()
@@ -360,6 +388,7 @@ class Parser(object):
       self.type_check_binary_operation(operator, term, new_term, line)
       binary = syntax_tree.Binary(operator, term, new_term, op_line)
       term = syntax_tree.Expression(binary, self.symbol_table.integer_singleton, binary.line)
+    self.in_expression = False
     return term
   def Term(self):
     expression_left = self.Factor()
@@ -396,8 +425,7 @@ class Parser(object):
       return expression
     call = self.Call()
     if call:
-      print call.type_object.type_object
-      return syntax_tree.Expression(call, call.type_object.type_object, call.line)
+      return syntax_tree.Expression(call, self.symbol_table.integer_singleton, call.line)
     return False
   def Instructions(self):
     instruction = self.Instruction()
@@ -547,30 +575,51 @@ class Parser(object):
     if not identifier:
       return False
     definition = self.symbol_table.find(identifier.data)
-    if not self.token_type() == '(' or not type(definition) is symbol_table.Procedure:
+    if not self.token_type() == '(':
       self.position = starting_position
       return False
+    forward = False
+    if not definition:
+      if not self.in_procedure:
+        raise Parser_error("The Procedure '{}' on line {} has not been defined".format(
+                             identifier.data, identifier.line))
+      forward = True
+    elif not type(definition) is symbol_table.Procedure:
+      raise Parser_error("'{}' on line {} is not a Procedure".format(
+                           identifier.data, identifier.line))
     line = self.token_line()
     self.next_token()
     actuals = self.Actuals()
-    length = len(actuals) if actuals else 0
-    definition_length = len(definition.formals) if definition.formals else 0
-    if length != definition_length:
-      raise Parser_error(
-             "The call to '{}' on line {} does not have the correct number of argumnets ({} for {})".
-                format(identifier.data, identifier.line, length, definition_length))
+    return_type = definition and definition.type_object
+    call = syntax_tree.Call(definition, actuals, return_type, identifier.line)
+    if not forward:
+      length = len(actuals) if actuals else 0
+      definition_length = len(definition.formals) if definition.formals else 0
+      if length != definition_length:
+        raise Parser_error(
+             "The call to '{}' on line {} does not have the correct number of arguments ({} for {})".
+                  format(identifier.data, identifier.line, length, definition_length))
+    else:
+      self.argument_number_checks.append(call)
+      if not identifier.data in self.forward_declarations:
+        self.forward_declarations[identifier.data] = [call]
+      else:
+        self.forward_declarations[identifier.data].append(call)
+      if self.in_expression:
+        self.call_type_checks.append(call)
     if not self.token_type() == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
     self.next_token()
-    return syntax_tree.Call(definition, actuals, definition.type_object, identifier.line)
+    return call
   def Designator(self):
+    starting_position = self.position
     identifier = self.identifier()
     if not identifier:
       return False
     table_entry = self.symbol_table.find(identifier.data)
     if not table_entry:
-      raise Parser_error("The identifier '{}' on line {} has not been defined".format(
-                         identifier.data, identifier.line))
+      self.position = starting_position
+      return False
     selectors = self.Selector()
     variable = syntax_tree.Variable(identifier.data, table_entry, identifier.line)
     location = syntax_tree.Location(variable, table_entry, variable.line)
