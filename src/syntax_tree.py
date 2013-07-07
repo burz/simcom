@@ -199,7 +199,7 @@ class Call(Node):
     if self.actuals:
       print 'subgraph' + self.new_cluster(), '{'
       new_nodes = []
-      for actual in actuals:
+      for actual in self.actuals:
         expression = actual.graphical()
         new_nodes.append(expression)
       print '}'
