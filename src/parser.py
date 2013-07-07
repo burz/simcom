@@ -425,7 +425,7 @@ class Parser(object):
       return expression
     call = self.Call()
     if call:
-      return syntax_tree.Expression(call, self.symbol_table.integer_singleton, call.line)
+      return syntax_tree.Expression(call, call.type_object, call.line)
     return False
   def Instructions(self):
     instruction = self.Instruction()
@@ -606,6 +606,7 @@ class Parser(object):
       else:
         self.forward_declarations[identifier.data].append(call)
       if self.in_expression:
+        call.type_object = self.symbol_table.integer_singleton
         self.call_type_checks.append(call)
     if not self.token_type() == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
@@ -615,6 +616,9 @@ class Parser(object):
     starting_position = self.position
     identifier = self.identifier()
     if not identifier:
+      return False
+    if self.token_type() == '(':
+      self.position = starting_position
       return False
     table_entry = self.symbol_table.find(identifier.data)
     if not table_entry:
