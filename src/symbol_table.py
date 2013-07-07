@@ -1,3 +1,5 @@
+import environment
+
 class Entry(object):
   node = -1
   anchor = -1
@@ -28,6 +30,8 @@ class Variable(Entry):
     self.name = name
     self.type_object = type_object
     self.line = line
+  def get_box(self):
+    return type_object.get_box()
   def graphical(self):
     node = self.new_node()
     print node, '[label="",shape=circle]'
@@ -37,6 +41,8 @@ class Variable(Entry):
 class Integer(Entry):
   def __init__(self):
     self.printed = False
+  def get_box(self):
+    return environment.IntegerBox()
   def graphical(self):
     if self.printed:
       return self.printed
@@ -50,6 +56,8 @@ class Array(Entry):
     self.type_object = type_object
     self.size = size
     self.printed = False
+  def get_box(self):
+    return environment.ArrayBox(self.size, self.type_object.get_box())
   def graphical(self):
     if self.printed:
       return self.printed
@@ -64,6 +72,8 @@ class Record(Entry):
     self.scope = scope
     self.line = line
     self.printed = False
+  def get_box(self):
+    return environment.RecordBox(self.scope)
   def graphical(self):
     if self.printed:
       return self.printed
