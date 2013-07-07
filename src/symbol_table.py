@@ -84,7 +84,8 @@ class Procedure(Entry):
   def graphical(self):
     node = self.new_node()
     print node, '[label="' + self.name + '"]'
-    print node + ' -> ' + self.type_object.graphical(), '[label=returns]'
+    if self.type_object:
+      print node + ' -> ' + self.type_object.graphical(), '[label=returns]'
     last_node = False
     if self.formals:
       for formal in self.formals:
