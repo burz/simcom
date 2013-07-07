@@ -14,7 +14,7 @@ class Parser(object):
     self.tokens = tokens
     self.symbol_table = symbol_table.Symbol_table()
     self.position = 0
-    self.in_expression = False
+    self.in_expression = 0
     instructions = self.Program()
     if not instructions:
       raise Parser_error("There is no 'PROGRAM' declared")
@@ -353,7 +353,7 @@ class Parser(object):
       return symbol_table.Record(scope, line)
     return False
   def Expression(self):
-    self.in_expression = True
+    self.in_expression += 1
     if self.token_type() == '+':
       line = self.token_line()
       self.next_token()
@@ -376,7 +376,7 @@ class Parser(object):
       line = self.token_line
       term = self.Term()
       if not term:
-        self.in_expression = False
+        self.in_expression -= 1
         return False
     while self.token_type() in ['+', '-']:
       op_line = self.token_line()
@@ -388,7 +388,7 @@ class Parser(object):
       self.type_check_binary_operation(operator, term, new_term, line)
       binary = syntax_tree.Binary(operator, term, new_term, op_line)
       term = syntax_tree.Expression(binary, self.symbol_table.integer_singleton, binary.line)
-    self.in_expression = False
+    self.in_expression -= 1
     return term
   def Term(self):
     expression_left = self.Factor()
@@ -590,7 +590,13 @@ class Parser(object):
     line = self.token_line()
     self.next_token()
     actuals = self.Actuals()
-    return_type = definition and definition.type_object
+    if forward:
+      if self.in_expression:
+        return_type = self.symbol_table.integer_singleton
+      else:
+        return_type = False
+    else:
+      return_type = definition.type_object
     call = syntax_tree.Call(definition, actuals, return_type, identifier.line)
     if not forward:
       length = len(actuals) if actuals else 0
@@ -606,7 +612,6 @@ class Parser(object):
       else:
         self.forward_declarations[identifier.data].append(call)
       if self.in_expression:
-        call.type_object = self.symbol_table.integer_singleton
         self.call_type_checks.append(call)
     if not self.token_type() == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
