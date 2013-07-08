@@ -197,7 +197,7 @@ class Call(Node):
     print procedure, '[label="' + self.definition.name + '"]'
     print node, '->', procedure, '[label="procedure"]'
     if self.actuals:
-      print 'subgraph' + self.new_cluster(), '{'
+      print 'subgraph ' + self.new_cluster(), '{'
       new_nodes = []
       for actual in self.actuals:
         expression = actual.graphical()
