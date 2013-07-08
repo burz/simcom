@@ -58,8 +58,11 @@ def make_environment(scope):
   return fields
 
 class Environment(object):
-  def __init__(self, scope):
+  def __init__(self, scope, parent = False):
     self.boxes = make_environment(scope)
+    self.parent = parent
   def get_box(self, name):
+    if not name in self.boxes:
+      return self.parent.get_box(name)
     return self.boxes[name]
 

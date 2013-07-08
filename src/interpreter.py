@@ -10,7 +10,8 @@ class Interpreter_error(Exception):
 
 class Interpreter(object):
   def run(self, tree, table):
-    self.environment = environment.Environment(table.scopes[1])
+    self.program_environment = environment.Environment(table.scopes[1])
+    self.environment = self.program_environment
     self.tree = tree
     for instruction in self.tree.instructions.instructions:
       self.do_instruction(instruction)
@@ -56,7 +57,7 @@ class Interpreter(object):
     box.value = value
   def do_call(self, call):
     old_environment = self.environment
-    self.environment = environment.Environment(call.definition.scope)
+    self.environment = environment.Environment(call.definition.scope, self.program_environment)
     if call.definition.instructions:
       for instruction in call.definition.instructions.instructions:
         self.do_instruction(instruction)
