@@ -214,6 +214,7 @@ class Parser(object):
                            format(identifier.data, line))
     par_line = self.token_line()
     self.next_token()
+    self.symbol_table.push_scope()
     formals = self.Formals()
     if not self.token_type() == ')':
       raise Parser_error("The '(' on line {} is not terminated by a ')'".format(par_line))
@@ -229,7 +230,6 @@ class Parser(object):
       raise Parser_error("The procedure declaration of '{}' on line {} is not followed by a ';'".
                            format(identifier.data, line))
     self.next_token()
-    self.symbol_table.push_scope()
     while self.VarDecl():
       pass
     instructions = False
