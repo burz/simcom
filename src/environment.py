@@ -1,3 +1,5 @@
+import symbol_table
+
 class IntegerBox(object):
   def __init__(self, value = False):
     if value:
@@ -24,16 +26,22 @@ class ArrayBox(object):
   def set_to(self, array):
     for this, other in zip(self.boxes, array.boxes):
       this.set_to(other.copy())
+  def get_box(self, index):
+    if index >= self.size:
+      return False
+    return self.boxes[index]
 
 class RecordBox(object):
   def __init__(self, scope):
-    if not scope:
-      self.fields = Environment.make_environment(scope)
+    if scope:
+      self.fields = make_environment(scope)
+    else:
+      self.fields = {}
   def copy(self):
     new_fields = {}
     for field in self.fields:
       new_fields[field] = self.fields[field].copy()
-    new = RecordBox()
+    new = RecordBox(False)
     new.fields = new_fields
     return new
   def set_to(self, record):
@@ -41,14 +49,16 @@ class RecordBox(object):
   def get_box(self, name):
     return self.fields[name]
 
+def make_environment(scope):
+  fields = {}
+  for symbol in scope.symbols:
+    if type(scope.symbols[symbol]) is symbol_table.Variable:
+      fields[symbol] = scope.symbols[symbol].get_box()
+  return fields
+
 class Environment(object):
   def __init__(self, scope):
     self.boxes = make_environment(scope)
-  def make_environment(scope):
-    fields = {}
-    for symbol in scope.symbols:
-      fields[symbol] = symbols[symbol].get_box()
-    return fields
   def get_box(self, name):
     return self.boxes[name]
 
