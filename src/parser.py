@@ -151,7 +151,7 @@ class Parser(object):
       if not self.symbol_table.insert(identifier.data, type_object):
         previous_definition = self.symbol_table.find(identifier.data)
         raise Parser_error(
-          "The type delaration of '{}' on line {} conflicts with the previous declaration on line {}".
+         "The type delaration of '{}' on line {} conflicts with the previous declaration on line {}".
             format(identifier.data, identifier.line, previous_definition.line))
     return True
   def VarDecl(self):
@@ -275,8 +275,8 @@ class Parser(object):
                            format(closing_name.data, closing_name.line))
     self.next_token()
     scope = self.symbol_table.pop_scope()
-    procedure = symbol_table.Procedure(identifier.data, formals, scope, return_type_object, instructions,
-                                       return_expression, line)
+    procedure = symbol_table.Procedure(identifier.data, formals, scope, return_type_object,
+                                       instructions, return_expression, line)
     if not self.symbol_table.insert(identifier.data, procedure):
       previous_definition = self.symbol_table.find(identifier.data)
       raise Parser_error("The procedure definition of '{}' on line {} ".format(
@@ -443,8 +443,11 @@ class Parser(object):
       instructions.append(instruction)
     return syntax_tree.Instructions(instructions, instructions[0].line)
   def Instruction(self):
-    return (self.Assign() or self.If() or self.Repeat() or self.While() or self.Read() or
-           self.Write() or self.Call())
+    instruction = (self.Assign() or self.If() or self.Repeat() or self.While() or self.Read() or
+                   self.Write() or self.Call())
+    if not instruction:
+      return False
+    return syntax_tree.Instruction(instruction, instruction.line)
   def Assign(self):
     starting_position = self.position
     location = self.Designator()

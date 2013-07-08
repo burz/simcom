@@ -15,18 +15,18 @@ class Interpreter(object):
     for instruction in self.tree.instructions.instructions:
       self.do_instruction(instruction)
   def do_instruction(self, instruction):
-    if type(instruction) is syntax_tree.Assign:
-      self.do_assign(instruction)
-    elif type(instruction) is syntax_tree.If:
-      self.do_if(instruction)
-    elif type(instruction) is syntax_tree.Repeat:
-      self.do_repeat(instruction)
-    elif type(instruction) is syntax_tree.Read:
-      self.do_read(instruction)
-    elif type(instruction) is syntax_tree.Call:
-      self.do_call(instruction)
+    if type(instruction.child) is syntax_tree.Assign:
+      self.do_assign(instruction.child)
+    elif type(instruction.child) is syntax_tree.If:
+      self.do_if(instruction.child)
+    elif type(instruction.child) is syntax_tree.Repeat:
+      self.do_repeat(instruction.child)
+    elif type(instruction.child) is syntax_tree.Read:
+      self.do_read(instruction.child)
+    elif type(instruction.child) is syntax_tree.Call:
+      self.do_call(instruction.child)
     else: # Write
-      self.do_write(instruction)
+      self.do_write(instruction.child)
   def do_assign(self, assign):
     box = self.get_box(assign.location)
     if type(assign.expression.child) is syntax_tree.Location:
@@ -43,7 +43,7 @@ class Interpreter(object):
   def do_repeat(self, repeat):
     while 1:
       for instruction in repeat.instructions.instructions:
-        self.do_instructions(instruction)
+        self.do_instruction(instruction)
       if self.evaluate_condition(repeat.condition):
         break
   def do_read(self, read):
@@ -60,7 +60,7 @@ class Interpreter(object):
     if call.definition.instructions:
       for instruction in call.definition.instructions.instructions:
         self.do_instruction(instruction)
-    if self.definition.return_expression:
+    if call.definition.return_expression:
       result = self.evaluate_expression(call.definition.return_expression)
       self.environment = old_environment
       return result
