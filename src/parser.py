@@ -1,5 +1,6 @@
 import symbol_table
 import syntax_tree
+import interpreter
 
 negated_relation = { '=' : '#', '#' : '=', '<' : '>=', '>' : '<=', '<=' : '>', '>=' : '<' }
 
@@ -114,8 +115,7 @@ class Parser(object):
         raise Parser_error(
             "The expression following the constant declaration of '{}' on line {} is not an INTEGER".
                format(identifier.data, identifier.line))
-# default for now
-      value = 5
+      value = interpreter.Interpreter.evaluate_expression(interpreter.Interpreter(), expression)
       if not self.token_type() == ';':
         raise Parser_error("The constant declaration of '{}' on line {} is not followed by a ';'".
                              format(identifier.data, identifier.line))
@@ -309,6 +309,10 @@ class Parser(object):
       expression = self.Expression()
       if not expression:
         raise Parser_error("The 'ARRAY' on line {} is not followed by an Expression".format(line))
+      if not type(expression.type_object) is symbol_table.Integer:
+        raise Parser_error("The Expression following the 'ARRAY' on line {} must be an INTEGER".
+                             format(expression.line))
+      size = interpreter.Interpreter.evaluate_expression(interpreter.Interpreter(), expression)
       if not self.token_type() == 'OF':
         raise Parser_error("The 'ARRAY' on line {} is not followed by a 'OF'".format(line))
       of_line = self.token_line()
@@ -317,7 +321,6 @@ class Parser(object):
       if not type_object:
         raise Parser_error("The 'OF' on line {} is not followed by a Type".format(of_line))
 # default for now
-      size = 5
       return symbol_table.Array(type_object, size, line)
     if self.token_type() == 'RECORD':
       line = self.token_line()
@@ -388,26 +391,53 @@ class Parser(object):
       if not new_term:
         raise Parser_error("The '{}' on line {} is not followed by a Term".format(operator, op_line))
       self.type_check_binary_operation(operator, term, new_term, line)
-      binary = syntax_tree.Binary(operator, term, new_term, op_line)
-      term = syntax_tree.Expression(binary, self.symbol_table.integer_singleton, binary.line)
+      if type(term.child) is syntax_tree.Number and type(new_term.child) is syntax_tree.Number:
+        interp = interpreter.Interpreter()
+        term_result = interp.evaluate_expression(term)
+        new_term_result = interp.evaluate_expression(new_term)
+        if operator == '+':
+          result = term_result + new_term_result
+        else: # -
+          result = term_result - new_term_result
+        constant = symbol_table.Constant(self.symbol_table.integer_singleton, result, op_line)
+        child = syntax_tree.Number(constant, constant.line)
+      else:
+        child = syntax_tree.Binary(operator, term, new_term, op_line)
+      term = syntax_tree.Expression(child, self.symbol_table.integer_singleton, child.line)
     self.in_expression -= 1
     return term
   def Term(self):
-    expression_left = self.Factor()
-    if not expression_left:
+    factor = self.Factor()
+    if not factor:
       return False
     while self.token_type() in ['*', 'DIV', 'MOD']:
       line = self.token_line()
       operator = self.token_type()
       self.next_token()
-      expression_right = self.Factor()
-      if not expression_right:
+      new_factor = self.Factor()
+      if not new_factor:
         raise Parser_error("The '{}' on line {} is not followed by a Factor".format(operator, line))
-      self.type_check_binary_operation(operator, expression_left, expression_right, line)
-      binary = syntax_tree.Binary(operator, expression_left, expression_right, line)
-      expression_left = syntax_tree.Expression(binary, self.symbol_table.integer_singleton,
-                                               binary.line)
-    return expression_left
+      self.type_check_binary_operation(operator, factor, new_factor, line)
+      if type(factor.child) is syntax_tree.Number and type(new_factor.child) is syntax_tree.Number:
+        interp = interpreter.Interpreter()
+        factor_result = interp.evaluate_expression(factor)
+        new_factor_result = interp.evaluate_expression(new_factor)
+        if operator == '*':
+          result = factor_result * new_factor_result
+        elif operator == 'DIV':
+          if new_factor_result is 0:
+            raise Parser_error("The right side of the 'DIV' on line {} evaluated to 0".format(line))
+          result = factor_result / new_factor_result
+        else: # MOD
+          if new_factor_result is 0:
+            raise Parser_error("The right side of the 'MOD' on line {} evaluated to 0".format(line))
+          result = factor_result % new_factor_result
+        constant = symbol_table.Constant(self.symbol_table.integer_singleton, result, line)
+        child = syntax_tree.Number(constant, constant.line)
+      else:
+        child = syntax_tree.Binary(operator, factor, new_factor, line)
+      factor = syntax_tree.Expression(child, self.symbol_table.integer_singleton, child.line)
+    return factor
   def Factor(self):
     integer = self.integer()
     if integer:
