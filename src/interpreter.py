@@ -72,6 +72,8 @@ class Interpreter(object):
     if type(expression.child) is syntax_tree.Number:
       return expression.child.table_entry.value
     elif type(expression.child) is syntax_tree.Location:
+      if type(expression.child.child) is syntax_tree.Number:
+        return expression.child.child.table_entry.value
       return self.get_box(expression.child).value
     elif type(expression.child) is syntax_tree.Call:
       return self.do_call(expression.child)

@@ -35,10 +35,10 @@ class Parser(object):
   def next_token(self):
     self.position += 1
   def type_check_binary_operation(self, operator, expression_left, expression_right, line):
-    if not type(expression_right.type_object) is symbol_table.Integer:
+    if not type(expression_right.type_object) in [symbol_table.Integer, symbol_table.Constant]:
       raise Parser_error("The expression to the left of the '{}' on line {} is not an INTEGER".
                          format(operator, line))
-    if not type(expression_left.type_object) is symbol_table.Integer:
+    if not type(expression_left.type_object) in [symbol_table.Integer, symbol_table.Constant]:
       raise Parser_error("The expression to the right of the '{}' on line {} is not an INTEGER".
                          format(operator, line))
   def Program(self):
@@ -320,7 +320,6 @@ class Parser(object):
       type_object = self.Type()
       if not type_object:
         raise Parser_error("The 'OF' on line {} is not followed by a Type".format(of_line))
-# default for now
       return symbol_table.Array(type_object, size, line)
     if self.token_type() == 'RECORD':
       line = self.token_line()
@@ -390,7 +389,7 @@ class Parser(object):
       new_term = self.Term()
       if not new_term:
         raise Parser_error("The '{}' on line {} is not followed by a Term".format(operator, op_line))
-      self.type_check_binary_operation(operator, term, new_term, line)
+      self.type_check_binary_operation(operator, term, new_term, op_line)
       if type(term.child) is syntax_tree.Number and type(new_term.child) is syntax_tree.Number:
         interp = interpreter.Interpreter()
         term_result = interp.evaluate_expression(term)
@@ -444,6 +443,9 @@ class Parser(object):
       return integer
     designator = self.Designator()
     if designator:
+      if type(designator) is syntax_tree.Number:
+        return syntax_tree.Expression(designator, self.symbol_table.integer_singleton,
+                                      designator.line)
       return syntax_tree.Expression(designator, designator.type_object, designator.line)
     if self.token_type() == '(':
       line = self.token_line()
@@ -664,6 +666,8 @@ class Parser(object):
     if not table_entry:
       self.position = starting_position
       return False
+    if type(table_entry) is symbol_table.Constant:
+      return syntax_tree.Number(table_entry, identifier.line)
     selectors = self.Selector()
     variable = syntax_tree.Variable(identifier.data, table_entry, identifier.line)
     location = syntax_tree.Location(variable, table_entry, variable.line)
