@@ -21,7 +21,7 @@ class ArrayBox(object):
   def copy(self):
     new = ArrayBox(self.size, False)
     for box in self.boxes:
-      new.boxes.append(box.copy)
+      new.boxes.append(box.copy())
     return new
   def set_to(self, array):
     for this, other in zip(self.boxes, array.boxes):
@@ -52,7 +52,8 @@ class RecordBox(object):
 def make_environment(scope):
   fields = {}
   for symbol in scope.symbols:
-    if type(scope.symbols[symbol]) is symbol_table.Variable:
+    if type(scope.symbols[symbol]) in [symbol_table.Record, symbol_table.Array,
+                                       symbol_table.Integer]:
       fields[symbol] = scope.symbols[symbol].get_box()
   return fields
 

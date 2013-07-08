@@ -6,7 +6,7 @@ class Interpreter_error(Exception):
   def __init__(self, error):
     self.error = error
   def __str__(self):
-    return "error: {}".format(error)
+    return "error: {}".format(self.error)
 
 class Interpreter(object):
   def run(self, tree, table):
@@ -29,7 +29,10 @@ class Interpreter(object):
       self.do_write(instruction)
   def do_assign(self, assign):
     box = self.get_box(assign.location)
-    box.set_to(self.evaluate_expression(assign.expression))
+    if type(assign.expression.child) is syntax_tree.Location:
+      box.set_to(self.get_box(assign.expression.child))
+    else:
+      box.value = self.evaluate_expression(assign.expression)
   def do_if(self, if_instruction):
     if self.evaluate_condition(if_instruction.condition):
       for instruction in if_instruction.instructions_true.instructions:
@@ -55,7 +58,7 @@ class Interpreter(object):
     old_environment = self.environment
     self.environment = environment.Environment(call.definition.scope)
     if call.definition.instructions:
-      for instruction in call.definition.instructions.instruction:
+      for instruction in call.definition.instructions.instructions:
         self.do_instruction(instruction)
     if self.definition.return_expression:
       result = self.evaluate_expression(call.definition.return_expression)
@@ -63,12 +66,12 @@ class Interpreter(object):
       return result
     self.environment = old_environment
   def do_write(self, write):
-    print self.evaluate_expression(node.expression)
+    print self.evaluate_expression(write.expression)
   def evaluate_expression(self, expression):
     if type(expression.child) is syntax_tree.Number:
       return expression.child.table_entry.value
     elif type(expression.child) is syntax_tree.Location:
-      return self.get_box(expression.child)
+      return self.get_box(expression.child).value
     elif type(expression.child) is syntax_tree.Call:
       return self.do_call(expression.child)
     elif type(expression.child) is syntax_tree.Binary:
@@ -108,7 +111,7 @@ class Interpreter(object):
   def get_box(self, location):
     if type(location.child) is syntax_tree.Field:
       record_box = self.get_box(location.child.location)
-      return record_box.get_box(variable.name)
+      return record_box.get_box(location.child.variable.name)
     elif type(location.child) is syntax_tree.Index:
       array_box = self.get_box(location.child.location)
       index = self.evaluate_expression(location.child.expression)

@@ -229,6 +229,7 @@ class Parser(object):
       raise Parser_error("The procedure declaration of '{}' on line {} is not followed by a ';'".
                            format(identifier.data, line))
     self.next_token()
+    self.symbol_table.push_scope()
     while self.VarDecl():
       pass
     instructions = False
@@ -273,7 +274,8 @@ class Parser(object):
       raise Parser_error("Expected a ';' following the closing of the procedure '{}' on line {}".
                            format(closing_name.data, closing_name.line))
     self.next_token()
-    procedure = symbol_table.Procedure(identifier.data, formals, return_type_object, instructions,
+    scope = self.symbol_table.pop_scope()
+    procedure = symbol_table.Procedure(identifier.data, formals, scope, return_type_object, instructions,
                                        return_expression, line)
     if not self.symbol_table.insert(identifier.data, procedure):
       previous_definition = self.symbol_table.find(identifier.data)
@@ -745,7 +747,7 @@ class Parser(object):
   def integer(self):
     if not self.token_type() == 'integer':
       return False
-    constant = symbol_table.Constant(self.symbol_table.integer_singleton, self.token().data,
+    constant = symbol_table.Constant(self.symbol_table.integer_singleton, int(self.token().data),
                                      self.token_line())
     number = syntax_tree.Number(constant, constant.line)
     self.next_token()

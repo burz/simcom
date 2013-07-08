@@ -84,9 +84,10 @@ class Record(Entry):
     return node
 
 class Procedure(Entry):
-  def __init__(self, name, formals, type_object, instructions, return_expression, line):
+  def __init__(self, name, formals, scope, type_object, instructions, return_expression, line):
     self.name = name
     self.formals = formals
+    self.scope = scope
     self.type_object = type_object
     self.instructions = instructions
     self.return_expression = return_expression
