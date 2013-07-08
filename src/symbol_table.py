@@ -96,7 +96,7 @@ class Procedure(Entry):
     node = self.new_node()
     print node, '[label="' + self.name + '"]'
     if self.type_object:
-      print node + ' -> ' + self.type_object.graphical(), '[label=returns]'
+      print node + ' -> ' + self.type_object.graphical(), '[label="returns"]'
     last_node = False
     if self.formals:
       for formal in self.formals:
@@ -105,8 +105,10 @@ class Procedure(Entry):
         if not last_node:
           print node, '->', new_node, '[label="formals"]'
         else:
-          print '{rank=same;', last_node, '->', new_node + '}'
+          print last_node, '->', new_node
         last_node = new_node
+    if self.scope.symbols:
+      print node + ' -> ' + self.scope.graphical(), '[label="scope"]'
     return node
 
 def compare_names(x, y):
