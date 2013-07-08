@@ -1,0 +1,9 @@
+PROGRAM bin;
+  CONST a = 5;
+        b = 7;
+  VAR x : INTEGER;
+BEGIN
+  WRITE a * x;
+  x := 10;
+  WRITE (a * x) MOD b
+END bin.
