@@ -56,8 +56,16 @@ class Interpreter(object):
     box = self.get_box(read.location)
     box.value = value
   def do_call(self, call):
+    new_environment = environment.Environment(call.definition.scope, self.program_environment)
+    if call.actuals:
+      for i, actual in enumerate(call.actuals):
+        if type(actual.type_object) is symbol_table.Integer:
+          new_environment.boxes[call.definition.formals[i]
+                               ].value = self.evaluate_expression(actual)
+        else:
+          new_environment.boxes[call.definition.formals[i]] = self.get_box(actual.child)
     old_environment = self.environment
-    self.environment = environment.Environment(call.definition.scope, self.program_environment)
+    self.environment = new_environment
     if call.definition.instructions:
       for instruction in call.definition.instructions.instructions:
         self.do_instruction(instruction)
