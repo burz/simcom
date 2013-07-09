@@ -198,13 +198,17 @@ class Call(Node):
     print node, '->', procedure, '[label="procedure"]'
     if self.actuals:
       print 'subgraph ' + self.new_cluster(), '{'
-      new_nodes = []
-      for actual in self.actuals:
-        expression = actual.graphical()
-        new_nodes.append(expression)
+      anchor = self.new_anchor()
+      print anchor, '[label="",style=invis]'
+      formal_nodes = []
+      for formal in self.definition.formals:
+        formal_node = self.new_node()
+        print formal_node, '[label="' + formal + '",shape=box,color=white,fontcolor=black]'
+        formal_nodes.append(formal_node)
       print '}'
-      for i, formal in enumerate(self.definition.formals):
-        print node, '->', new_nodes[i], '[label="' + formal + '"]'
+      for i, actual in enumerate(self.actuals):
+        print formal_nodes[i] + ' -> ' + actual.graphical(), '[label="expression"]'
+      print node, '->', anchor, '[label="actuals"]'
     return node
 
 class Syntax_tree(object):
