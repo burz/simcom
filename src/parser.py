@@ -563,7 +563,7 @@ class Parser(object):
       raise Parser_error("The 'WHILE' on line {} is not teminated by an 'END'".format(line))
     self.next_token()
     repeat_relation = negated_relation[condition.relation]
-    repeat_condition = syntax_tree.Condition(repeat_relation, condition.expression_right,
+    repeat_condition = syntax_tree.Condition(repeat_relation, condition.expression_left,
                                              condition.expression_right, condition.line)
     repeat = syntax_tree.Repeat(repeat_condition, instructions, repeat_condition.line)
     instruction = syntax_tree.Instruction(repeat, repeat.line)
