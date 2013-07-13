@@ -6,7 +6,7 @@ succesful_tests = 0
 failed_tests = 0
 
 test_names.each do |name|
-  error = `./sc #{ARGV[0]} examples/#{name}.sim 2>&1`
+  error = `./sc #{ARGV[0]} examples/#{name}.sim #{ARGV[1]} 2>&1`
   status = $?.exitstatus
   if status == 0
     puts "\e[32m$$  Test '#{name}' was successful.\e[0m"
