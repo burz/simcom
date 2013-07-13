@@ -175,7 +175,54 @@ class Lazy_generator(object):
   def generate_condition_evaluator(self, condition):
     pass
   def generate_expression_evaluator(self, expression):
-    pass
+    if type(expression.child) is syntax_tree.Number:
+      self.code.append("\t\tpushq\t${}".format(expression.child.table_entry.value))
+    elif type(expression.child) is syntax_tree.Location:
+      self.generate_location_evaluator(expression.child.expression_left)
+      self.code.append('\t\tpopq\t%rax')
+      self.code.append('\t\tmovq\t(%rax), %rcx')
+      self.code.append('\t\tpushq\t%rcx')
+    elif type(expression.child) is syntax_tree.Binary:
+      if expression.child.operator == '+':
+        generate_addition_like_evaluator(expression.child, 'addq')
+      elif expression.child.operator == '-':
+        generate_addition_like_evaluator(expression.child, 'subq')
+      elif expression.child.operator == '*':
+        generate_addition_like_evaluator(expression.child, 'imulq')
+      elif expression.child.operator == 'DIV':
+        generate_division_evaluator(expression.child, '__error_div_by_zero', '%rax')
+      else: # MOD
+        generate_division_evaluator(expression.child, '__error_mod_by_zero', '%rdx')
+    elif type(expression.child) is syntax_tree.Call:
+      self.generate_call(expression.child)
+      self.code.append('\t\tpushq\t%rax')
+  def generate_addition_like_evaluator(self, binary, operation):
+    self.generate_expression_evaluator(binary.expression_left)
+    if not type(binary.expression_right.child) is syntax_tree.Number:
+      self.generate_expression_evaluate(binary.expression_right)
+      self.code.append('\t\tpopq\t%rcx')
+      self.code.append('\t\tpopq\t%rax')
+      self.code.append("\t\t{}\t%rcx, %rax".format(operation))
+    else:
+      self.code.append('\t\tpopq\t%rax')
+      value = binary.expression_right.child.table_entry.value
+      self.code.append("\t\t{}\t${}, %rax".format(operation, value))
+    self.code.append('\t\tpushq\t%rax')
+  def generate_division_evaluator(self, binary, error_function, return_register)
+    self.generate_expression_evaluator(binary.expression_left)
+    self.generate_expression_evaluator(binary.expression_right)
+    self.code.append('\t\tpopq\t%rcx')
+    self.code.append('\t\tpopq\t%rax')
+    if not type(binary.expression_right.child) is syntax_tree.Number:
+      self.code.append('\t\tcmpq\t$0, %rcx')
+      self.new_handle()
+      self.code.append("\t\tjne\t\t_no_error_{}_".format(self.handle))
+      self.code.append("\t\tmovq\t${}, %rdi".format(binary.line))
+      self.code.append("\t\tjmp\t\t{}".format(error_function))
+    self.code.append('\t\tmovq\t%rax, %rdx')
+    self.code.append('\t\tsarq\t$63, %rdx')
+    self.code.append('\t\tidivq\t%rcx')
+    self.code.append("\t\tpushq\t{}".format(return_register))
   def link_library(self):
     evaluated_to_zero = False
     stderr_printing = False
