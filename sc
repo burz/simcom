@@ -67,6 +67,7 @@ try:
       code = compiler.generate(syntax_tree, symbol_table)
       for line in code:
         print line
+      print
     else:
       pass
 except Scanner_error as error:
