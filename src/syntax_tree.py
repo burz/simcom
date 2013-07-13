@@ -139,6 +139,8 @@ class Index(Node):
     self.expression = expression
     self.type_object = type_object
     self.line = line
+  def get_offset(self, index):
+    return index * type_object.get_size()
   def graphical(self):
     node = self.new_node()
     print node, '[label="Index",shape=rectangle]'
@@ -152,6 +154,12 @@ class Field(Node):
     self.variable = variable
     self.type_object = type_object
     self.line = line
+  def get_offset(self, name):
+    offset = 0
+    for key, value in self.type_object.scope.symbols.iteritems():
+      if key == name:
+        return offset
+      offset += value.get_size()
   def graphical(self):
     node = self.new_node()
     print node, '[label="Field",shape=rectangle]'
