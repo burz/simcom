@@ -110,6 +110,20 @@ class Code_generator(object):
     self.code.append('\t\tpopq\t%rbx')
     self.read_input = True
   def generate_call(self, call):
+    if call.definition.instructions or call.definition.return_expression:
+      if call.actuals:
+        for actual in call.actuals:
+          if (type(actual.child) is syntax_tree.Location and
+              actual.child.get_size() > INTEGER_SIZE):
+            self.generate_location_evaluator(actual.child)
+          else:
+            self.generate_expression_evaluator(actual)
+      self.code.append("\t\tcall\t__{}__".format(call.definition.name))
+      if not call.definition.name in self.procedures:
+        self.procedures[call.definition.name] = call.definition
+      if call.definition.formals:
+        number = len(call.definition.formals)
+        self.code.append("\t\taddq\t${}, %rsp".format(times * INTEGER_SIZE))
   def generate_write(self, write):
     self.code.append("__write_at_{}:".format(write.line))
     self.generate_expression_evaluator(write.expression)
