@@ -1,11 +1,12 @@
+import syntax_tree
 import code_library
 
 INTEGER_SIZE = 8
 
-class Code_generator(object):
-  def generate(self, table, tree):
-    self.table = table
+class Lazy_generator(object):
+  def generate(self, tree, table):
     self.tree = tree
+    self.table = table
     self.reset_library() 
     self.handle = -1
     self.in_procedure = False
@@ -44,7 +45,7 @@ class Code_generator(object):
   def new_handle(self):
     self.handle += 1
     return self.handle
-  def generate_instructions(tree):
+  def generate_instructions(self, tree):
     for instruction in tree.instructions.instructions:
       if type(instruction.child) is syntax_tree.Assign:
         self.generate_assign(instruction.child)
@@ -136,7 +137,7 @@ class Code_generator(object):
     self.code.append('\t\tpushq\t%rbp')
     self.code.append('\t\tmovq\t%rsp, %rbp')
     self.in_procedure = True
-    self.formals = procedure.formals:
+    self.formals = procedure.formals
     self.local_variables = []
     offset = 0
     for variable in procedure.scope.symbols:
@@ -165,8 +166,11 @@ class Code_generator(object):
         continue
       self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
   def generate_location_evaluator(self, location):
+    pass
   def generate_condition_evaluator(self, condition):
+    pass
   def generate_expression_evaluator(self, expression):
+    pass
   def link_library(self):
     evaluated_to_zero = False
     stderr_printing = False

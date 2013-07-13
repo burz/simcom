@@ -83,7 +83,7 @@ class Record(Entry):
     return environment.RecordBox(self.scope)
   def get_size(self):
     size = 0
-    for type_object in self.scope.symbols.values()
+    for type_object in self.scope.symbols.values():
       size += type_object.get_size()
   def graphical(self):
     if self.printed:

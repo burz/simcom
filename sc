@@ -5,6 +5,7 @@ import sys
 from src.scanner import Scanner, Scanner_error
 from src.parser import Parser, Parser_error
 from src.interpreter import Interpreter, Interpreter_error
+from src.lazy_generator import Lazy_generator
 
 usage = "error: sc usage: ./sc [-(s: | t | a | i | l)] [filename]\n"
 
@@ -62,7 +63,10 @@ try:
       interpreter = Interpreter()
       interpreter.run(syntax_tree, symbol_table)
     elif lazy_compile:
-      pass
+      compiler = Lazy_generator()
+      code = compiler.generate(syntax_tree, symbol_table)
+      for line in code:
+        print line
     else:
       pass
 except Scanner_error as error:
