@@ -210,7 +210,7 @@ class Lazy_generator(object):
       self.code.append('\t\tpushq\t%rax')
     elif type(location.child) is syntax_tree.Index:
       index = location.child
-      self.create_location_evaluator(index.location)
+      self.generate_location_evaluator(index.location)
       if not type(index.expression.child) is syntax_tree.Number:
         self.generate_expression_evaluator(index.expression)
         self.code.append('\t\tpopq\t%rcx')
@@ -225,13 +225,13 @@ class Lazy_generator(object):
         self.code.append('\t\tmovq\t%rcx, %rdx')
         self.code.append('\t\tjmp\t\t__error_bad_index')
         self.code.append("_no_error_{}_:".format(self.handle))
-        self.code.append("\t\timulq\t${}, %rcx".format(index.type_object.get_size())
+        self.code.append("\t\timulq\t${}, %rcx".format(index.type_object.get_size()))
         self.code.append('\t\taddq\t%rcx, %rax')
         self.code.append('\t\tpushq\t%rax')
         self.bad_index = True
       else:
         self.code.append('\t\tpopq\t%rax')
-        offset = self.location.type_object.get_offset(index.expression.child.table_entry.value)
+        offset = location.type_object.get_offset(index.expression.child.table_entry.value)
         self.code.append("\t\taddq\t${}, %rax".format(offset))
         self.code.append('\t\tpushq\t%rax')
     elif not self.in_procedure:
@@ -240,7 +240,7 @@ class Lazy_generator(object):
     else:
       variable = location.child
       if variable.name in self.local_variables:
-        offset = self.local_variables.keys().index(variable.name) * 8
+        offset = self.local_variables.index(variable.name) * 8
         if not offset:
           self.code.append('\t\tpushq\t%rbx')
         else:
