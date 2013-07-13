@@ -65,6 +65,8 @@ class Array(Entry):
     return environment.ArrayBox(self.size, self.type_object.get_box())
   def get_size(self):
     return self.size * self.type_object.get_size()
+  def get_offset(self, index):
+    return index * self.get_size()
   def graphical(self):
     if self.printed:
       return self.printed
@@ -86,6 +88,12 @@ class Record(Entry):
     for type_object in self.scope.symbols.values():
       size += type_object.get_size()
     return size
+  def get_offset(self, name):
+    offset = 0 
+    for key, value in self.scope.symbols.iteritems():
+      if key == name:
+        return offset
+      offset += value.get_size()
   def graphical(self):
     if self.printed:
       return self.printed
