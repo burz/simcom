@@ -231,7 +231,8 @@ class Lazy_generator(object):
         self.bad_index = True
       else:
         self.code.append('\t\tpopq\t%rax')
-        offset = location.type_object.get_offset(index.expression.child.table_entry.value)
+        value = index.expression.child.table_entry.value
+        offset = index.location.type_object.get_offset(value)
         self.code.append("\t\taddq\t${}, %rax".format(offset))
         self.code.append('\t\tpushq\t%rax')
     elif not self.in_procedure:
