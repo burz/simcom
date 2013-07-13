@@ -85,6 +85,7 @@ class Record(Entry):
     size = 0
     for type_object in self.scope.symbols.values():
       size += type_object.get_size()
+    return size
   def graphical(self):
     if self.printed:
       return self.printed

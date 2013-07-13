@@ -1,4 +1,5 @@
 import syntax_tree
+import symbol_table
 import code_library
 
 INTEGER_SIZE = 8
@@ -16,7 +17,7 @@ class Lazy_generator(object):
     self.code.append('\t.text')
     self.code.append('main:\n')
     if tree:
-      self.generate_instructions(tree)
+      self.generate_instructions(tree.instructions)
     self.code.append('__end_program:')
     self.code.append('\t\tmovq\t$60, %rax')
     self.code.append('\t\tsyscall\n')
@@ -29,8 +30,7 @@ class Lazy_generator(object):
           self.generate_procedure(procedure)
           printed.append(procedure)
     self.link_library()
-    if self.table.scopes[1].symbols:
-      self.create_variables()
+    self.generate_variables()
     if self.read_only_declarations:
       self.code.append('\n\t.section .rodata')
       for declaration in self.read_only_declarations:
@@ -45,8 +45,8 @@ class Lazy_generator(object):
   def new_handle(self):
     self.handle += 1
     return self.handle
-  def generate_instructions(self, tree):
-    for instruction in tree.instructions.instructions:
+  def generate_instructions(self, instructions):
+    for instruction in instructions.instructions:
       if type(instruction.child) is syntax_tree.Assign:
         self.generate_assign(instruction.child)
       elif type(instruction.child) is syntax_tree.If:
@@ -62,7 +62,7 @@ class Lazy_generator(object):
   def generate_assign(self, assign):
     self.code.append("__assign_at_{}:".format(assign.line))
     self.generate_location_evaluator(assign.location)
-    count = assign.location.get_size() / INTEGER_SIZE
+    count = assign.location.type_object.get_size() / INTEGER_SIZE
     if count is 1:
       self.generate_expression_evaluator(assign.expression)
     else:
@@ -86,12 +86,12 @@ class Lazy_generator(object):
     self.generate_condition_evaluator(if_statement.condition)
     handle = self.handle
     self.code.append("_true_{}_:".format(handle))
-    self.generate_instructions(if_statement.instructions_true.instructions)
+    self.generate_instructions(if_statement.instructions_true)
     if if_statement.instructions_false:
       self.code.append("\t\tjmp\t\t_end_{}_".format(handle))
     self.code.append("_false_{}_:".format(handle))
     if if_statement.instructions_false:
-      self.generate_instructions(if_statement.instructions_false.instructions)
+      self.generate_instructions(if_statement.instructions_false)
       self.code.append("_end_{}_:".format(handle))
   def generate_repeat(self, repeat):
     label = "__repeat_at_{}".format(repeat.line)
@@ -99,7 +99,7 @@ class Lazy_generator(object):
     self.generate_condition_evaluator(repeat.condition)
     handle = self.handle
     self.code.append("_false_{}_:".format(handle))
-    self.generate_instructions(repeat.instructions.instructions)
+    self.generate_instructions(repeat.instructions)
     self.code.append("\t\tjmp\t\t{}".format(label))
     self.code.append("_true_{}_:".format(handle))
   def generate_read(self, read):
@@ -116,7 +116,7 @@ class Lazy_generator(object):
       if call.actuals:
         for actual in call.actuals:
           if (type(actual.child) is syntax_tree.Location and
-              actual.child.get_size() > INTEGER_SIZE):
+              actual.type_object.get_size() > INTEGER_SIZE):
             self.generate_location_evaluator(actual.child)
           else:
             self.generate_expression_evaluator(actual)
@@ -124,8 +124,8 @@ class Lazy_generator(object):
       if not call.definition.name in self.procedures:
         self.procedures[call.definition.name] = call.definition
       if call.definition.formals:
-        number = len(call.definition.formals)
-        self.code.append("\t\taddq\t${}, %rsp".format(times * INTEGER_SIZE))
+        n = len(call.definition.formals)
+        self.code.append("\t\taddq\t${}, %rsp".format(n * INTEGER_SIZE))
   def generate_write(self, write):
     self.code.append("__write_at_{}:".format(write.line))
     self.generate_expression_evaluator(write.expression)
@@ -150,7 +150,7 @@ class Lazy_generator(object):
     self.code.append('\t\tpushq\t%rbx')
     self.code.append('\t\tleaq\t8(%rsp), %rbx')
     if procedure.instructions:
-      self.generate_instructions(procedure.instructions.instructions)
+      self.generate_instructions(procedure.instructions)
     if procedure.return_expression:
       self.generate_expresssion_evaluator(procedure.return_expression)
       self.code.append('\t\tpopq\t%rax')
@@ -160,11 +160,13 @@ class Lazy_generator(object):
     self.code.append('\t\tpopq\t%rbp')
     self.code.append('\t\tret')
   def generate_variables(self):
-    self.code.append('\n\n.data')
-    for name, type_object in self.symbol_table.scopes[1].symbols.iteritems():
-      if not type(type_object) is symbol_table.Variable:
-        continue
-      self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
+    symbols = self.table.scopes[1].symbols
+    if symbols:
+      self.code.append('\n\n.data')
+      for name, type_object in self.table.scopes[1].symbols.iteritems():
+        if not type(type_object) is symbol_table.Variable:
+          continue
+        self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
   def generate_location_evaluator(self, location):
     pass
   def generate_condition_evaluator(self, condition):
