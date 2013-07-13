@@ -162,9 +162,10 @@ class Lazy_generator(object):
   def generate_variables(self):
     symbols = self.table.scopes[1].symbols
     if symbols:
-      self.code.append('\n\n.data')
+      self.code.append('\n\t.data')
       for name, type_object in self.table.scopes[1].symbols.iteritems():
-        if not type(type_object) is symbol_table.Variable:
+        if not type(type_object) in [symbol_table.Variable, symbol_table.Array, symbol_table.Record,
+                                     symbol_table.Integer]:
           continue
         self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
   def generate_location_evaluator(self, location):
