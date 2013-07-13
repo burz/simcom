@@ -1,5 +1,7 @@
 import code_library
 
+INTEGER_SIZE = 8
+
 class Code_generator(object):
   def generate(self, table, tree):
     self.table = table
@@ -56,6 +58,27 @@ class Code_generator(object):
       else: # Write
         self.generate_write(instruction.child)
   def generate_assign(self, assign):
+    self.code.append("__assign_at_{}:".format(assign.line))
+    self.generate_location_evaluator(assign.location)
+    count = assign.location.get_size() / INTEGER_SIZE
+    if count is 1:
+      self.generate_expression_evaluator(assign.expression)
+    else:
+      self.generate_location_evaluator(assign.expression.child)
+    self.code.append('\t\tpopq\t%rcx')
+    self.code.append('\t\tpopq\t%rax')
+    if count > 1:
+      self.code.append("\t\tmovq\t${}, %rdi".format(count))
+      handle = self.new_handle()
+      self.code.append("_loop_{}_:".format(handle))
+      self.code.append('\t\tmovq\t(%rcx), %rsi')
+      self.code.append('\t\tmovq\t%rsi, (%rax)')
+      self.code.append('\t\taddq\t$8, %rcx')
+      self.code.append('\t\taddq\t$8, %rax')
+      self.code.append('\t\tdecq\t%rdi')
+      self.code.append("\t\tjnz\t\t_loop_{}_".format(handle))
+    else:
+      self.code.append('\t\tmovq\t%rcx, (%rax)')
   def generate_if(self, if_statement):
     self.code.append("__if_at_{}:".format(if_statement.line))
     self.generate_condition_evaluator(if_statement.condition)

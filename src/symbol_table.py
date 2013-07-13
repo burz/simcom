@@ -1,4 +1,5 @@
 import environment
+import lazy_generator
 
 class Entry(object):
   node = -1
@@ -46,7 +47,7 @@ class Integer(Entry):
   def get_box(self):
     return environment.IntegerBox()
   def get_size(self):
-    return code_generator.INTEGER_SIZE
+    return lazy_generator.INTEGER_SIZE
   def graphical(self):
     if self.printed:
       return self.printed
