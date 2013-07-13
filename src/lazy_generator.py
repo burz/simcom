@@ -65,6 +65,11 @@ class Code_generator(object):
     self.read_input = True
   def generate_call(self, call):
   def generate_write(self, write):
+    self.code.append("__write_at_{}".format(write.line))
+    self.generate_expression_evaluator(write.expression)
+    self.code.append('\t\tpopq\t%rdi')
+    self.code.append('\t\tcall\t__write_stdout')
+    self.write_output = True
   def generate_procedure(self, prcedure):
   def generate_variables(self):
     self.code.append('\n\n.data')
