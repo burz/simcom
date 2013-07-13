@@ -152,7 +152,7 @@ class Lazy_generator(object):
     if procedure.instructions:
       self.generate_instructions(procedure.instructions)
     if procedure.return_expression:
-      self.generate_expresssion_evaluator(procedure.return_expression)
+      self.generate_expression_evaluator(procedure.return_expression)
       self.code.append('\t\tpopq\t%rax')
     self.in_procedure = False
     self.code.append('\t\tpopq\t%rbx')
@@ -181,7 +181,7 @@ class Lazy_generator(object):
       self.code.append('\t\tcmpq\t%rcx, %rax')
     else:
       self.code.append('\t\tpopq\t%rax')
-      value = condition.expression.right.child.table_entry.value
+      value = condition.expression_right.child.table_entry.value
       self.code.append("\t\tcmpq\t${}, %rax".format(value))
     self.new_handle()
     if condition.relation == '=':
@@ -206,28 +206,28 @@ class Lazy_generator(object):
     if type(expression.child) is syntax_tree.Number:
       self.code.append("\t\tpushq\t${}".format(expression.child.table_entry.value))
     elif type(expression.child) is syntax_tree.Location:
-      self.generate_location_evaluator(expression.child.expression_left)
+      self.generate_location_evaluator(expression.child)
       self.code.append('\t\tpopq\t%rax')
       self.code.append('\t\tmovq\t(%rax), %rcx')
       self.code.append('\t\tpushq\t%rcx')
     elif type(expression.child) is syntax_tree.Binary:
       if expression.child.operator == '+':
-        generate_addition_like_evaluator(expression.child, 'addq')
+        self.generate_addition_like_evaluator(expression.child, 'addq')
       elif expression.child.operator == '-':
-        generate_addition_like_evaluator(expression.child, 'subq')
+        self.generate_addition_like_evaluator(expression.child, 'subq')
       elif expression.child.operator == '*':
-        generate_addition_like_evaluator(expression.child, 'imulq')
+        self.generate_addition_like_evaluator(expression.child, 'imulq')
       elif expression.child.operator == 'DIV':
-        generate_division_evaluator(expression.child, '__error_div_by_zero', '%rax')
+        self.generate_division_evaluator(expression.child, '__error_div_by_zero', '%rax')
       else: # MOD
-        generate_division_evaluator(expression.child, '__error_mod_by_zero', '%rdx')
+        self.generate_division_evaluator(expression.child, '__error_mod_by_zero', '%rdx')
     elif type(expression.child) is syntax_tree.Call:
       self.generate_call(expression.child)
       self.code.append('\t\tpushq\t%rax')
   def generate_addition_like_evaluator(self, binary, operation):
     self.generate_expression_evaluator(binary.expression_left)
     if not type(binary.expression_right.child) is syntax_tree.Number:
-      self.generate_expression_evaluate(binary.expression_right)
+      self.generate_expression_evaluator(binary.expression_right)
       self.code.append('\t\tpopq\t%rcx')
       self.code.append('\t\tpopq\t%rax')
       self.code.append("\t\t{}\t%rcx, %rax".format(operation))
@@ -236,7 +236,7 @@ class Lazy_generator(object):
       value = binary.expression_right.child.table_entry.value
       self.code.append("\t\t{}\t${}, %rax".format(operation, value))
     self.code.append('\t\tpushq\t%rax')
-  def generate_division_evaluator(self, binary, error_function, return_register)
+  def generate_division_evaluator(self, binary, error_function, return_register):
     self.generate_expression_evaluator(binary.expression_left)
     self.generate_expression_evaluator(binary.expression_right)
     self.code.append('\t\tpopq\t%rcx')
