@@ -171,7 +171,7 @@ _write_end:
 
 # Print out an error if the input is not an integer
 #
-error_input = """__error_bad_input:
+error_bad_input_code = """__error_bad_input:
 		movq	$1, %rax
 		movq	$2, %rdi
 		movq	$_bad_input, %rsi

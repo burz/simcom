@@ -303,12 +303,16 @@ class Lazy_generator(object):
     self.generate_expression_evaluator(binary.expression_right)
     self.code.append('\t\tpopq\t%rcx')
     self.code.append('\t\tpopq\t%rax')
+    self.new_handle()
     if not type(binary.expression_right.child) is syntax_tree.Number:
       self.code.append('\t\tcmpq\t$0, %rcx')
-      self.new_handle()
       self.code.append("\t\tjne\t\t_no_error_{}_".format(self.handle))
       self.code.append("\t\tmovq\t${}, %rdi".format(binary.line))
       self.code.append("\t\tjmp\t\t{}".format(error_function))
+      if error_function == '__error_div_by_zero':
+        self.div_by_zero = True
+      if error_function == '__error_mod_by_zero':
+        self.mod_by_zero = True
     self.code.append("_no_error_{}_:".format(self.handle))
     self.code.append('\t\tmovq\t%rax, %rdx')
     self.code.append('\t\tsarq\t$63, %rdx')
@@ -319,22 +323,24 @@ class Lazy_generator(object):
     stderr_printing = False
     write_code = False
     if self.div_by_zero:
-      self.code.append(code_library.error_div_zero)
-      decl = '_div_error:\t\t.ascii "error: The right side of the DIV expression at ("'
+      self.code.append(code_library.error_div_by_zero_code)
+      decl = '_div_error:\t\t.ascii "error: The right side of the DIV expression on line "'
       self.read_only_declarations.append(decl)
       evaluated_to_zero = True
       stderr_printing = True
     if self.mod_by_zero:
-      self.code.append(code_library.error_mod_zero)
-      decl = '_mod_error:\t\t.ascii "error: The right size of the MOD expression at ("'
+      self.code.append(code_library.error_mod_by_zero_code)
+      decl = '_mod_error:\t\t.ascii "error: The right size of the MOD expression on line "'
       self.read_only_declarations.append(decl)
+      evaluated_to_zero = True
+      stderr_printing = True
     if evaluated_to_zero:
       self.read_only_declarations.append('_zero_end:\t\t.ascii ") evaluated to zero\\n"')
     if self.bad_index:
-      self.code.append(code_library.error_index_range_code)
-      decl = '_index_range:\t.ascii "error: Index out of range: the expression at ("'
+      self.code.append(code_library.error_bad_index_code)
+      decl = '_index_range:\t.ascii "error: Index out of range: the expression on line "'
       self.read_only_declarations.append(decl)
-      self.read_only_declarations.append('_evaluated_to:\t.ascii ") evaluated to "')
+      self.read_only_declarations.append('_evaluated_to:\t.ascii " evaluated to "')
       stderr_printing = True
     if self.write_output:
       self.code.append(code_library.write_stdout_code)
@@ -346,7 +352,7 @@ class Lazy_generator(object):
       self.code.append(code_library.write_code)
     if self.read_input:
       self.code.append(code_library.read_code)
-      self.code.append(code_library.error_input)
+      self.code.append(code_library.error_bad_input_code)
       decl = '_bad_input:\t\t.ascii "error: The input was not an integer\\n"'
       self.read_only_declarations.append(decl)
 
