@@ -58,7 +58,11 @@ class Code_generator(object):
     self.code.append("__read_at_{}".format(read.line))
     self.code.append('\t\tpushq\t%rbx')
     self.generate_location_evaluator(read.location)
-    self.
+    self.code.append('\t\tpopq\t%rbx')
+    self.code.append('\t\tcall\t__read')
+    self.code.append('\t\tmovq\t%rax, (%rbx)')
+    self.code.append('\t\tpopq\t%rbx')
+    self.read_input = True
   def generate_call(self, call):
   def generate_write(self, write):
   def generate_procedure(self, prcedure):
