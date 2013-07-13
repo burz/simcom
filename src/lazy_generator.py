@@ -69,6 +69,14 @@ class Code_generator(object):
       self.generate_instructions(if_statement.instructions_false.instructions)
       self.code.append("_end_{}_:".format(handle))
   def generate_repeat(self, repeat):
+    label = "__repeat_at_{}".format(repeat.line)
+    self.code.append(label + ':')
+    self.generate_condition_evaluator(repeat.condition)
+    handle = self.handle
+    self.code.append("_false_{}_:".format(handle))
+    self.generate_instructions(repeat.instructions.instructions)
+    self.code.append("\t\tjmp\t\t{}".format(label))
+    self.code.append("_true_{}_:".format(handle))
   def generate_read(self, read):
     self.code.append("__read_at_{}:".format(read.line))
     self.code.append('\t\tpushq\t%rbx')
