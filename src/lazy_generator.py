@@ -173,7 +173,35 @@ class Lazy_generator(object):
   def generate_location_evaluator(self, location):
     pass
   def generate_condition_evaluator(self, condition):
-    pass
+    self.generate_expression_evaluator(condition.expression_left)
+    if not type(condition.expression_right.child) is syntax_tree.Number:
+      self.generate_expression_evaluator(condition.expression_right)
+      self.code.append('\t\tpopq\t%rcx')
+      self.code.append('\t\tpopq\t%rax')
+      self.code.append('\t\tcmpq\t%rcx, %rax')
+    else:
+      self.code.append('\t\tpopq\t%rax')
+      value = condition.expression.right.child.table_entry.value
+      self.code.append("\t\tcmpq\t${}, %rax".format(value))
+    self.new_handle()
+    if condition.relation == '=':
+      self.code.append("\t\tje\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+    elif condition.relation == '#':
+      self.code.append("\t\tjne\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+    elif condition.relation == '<':
+      self.code.append("\t\tjl\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+    elif condition.relation == '>':
+      self.code.append("\t\tjg\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+    elif condition.relation == '<=':
+      self.code.append("\t\tjle\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+    else: # >=
+      self.code.append("\t\tjge\t\t_true_{}_".format(self.handle))
+      self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
   def generate_expression_evaluator(self, expression):
     if type(expression.child) is syntax_tree.Number:
       self.code.append("\t\tpushq\t${}".format(expression.child.table_entry.value))
