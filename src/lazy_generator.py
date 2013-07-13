@@ -5,6 +5,7 @@ class Code_generator(object):
     self.table = table
     self.tree = tree
     self.reset_library() 
+    self.handle = -1
     self.procedures = {}
     self.read_only_declarations = []
     self.code = ['\t.globl\tmain\n']
@@ -37,6 +38,9 @@ class Code_generator(object):
     self.bad_index = False
     self.write_output = False
     self.read_input = False
+  def new_handle(self):
+    self.handle += 1
+    return self.handle
   def generate_instructions(tree):
     for instruction in tree.instructions.instructions:
       if type(instruction.child) is syntax_tree.Assign:
@@ -53,9 +57,20 @@ class Code_generator(object):
         self.generate_write(instruction.child)
   def generate_assign(self, assign):
   def generate_if(self, if_statement):
+    self.code.append("__if_at_{}:".format(if_statement.line))
+    self.generate_condition_evaluator(if_statement.condition)
+    handle = self.handle
+    self.code.append("_true_{}_:".format(handle))
+    self.generate_instructions(if_statement.instructions_true.instructions)
+    if if_statement.instructions_false:
+      self.code.append("\t\tjmp\t\t_end_{}_".format(handle))
+    self.code.append("_false_{}_:".format(handle))
+    if if_statement.instructions_false:
+      self.generate_instructions(if_statement.instructions_false.instructions)
+      self.code.append("_end_{}_:".format(handle))
   def generate_repeat(self, repeat):
   def generate_read(self, read):
-    self.code.append("__read_at_{}".format(read.line))
+    self.code.append("__read_at_{}:".format(read.line))
     self.code.append('\t\tpushq\t%rbx')
     self.generate_location_evaluator(read.location)
     self.code.append('\t\tpopq\t%rbx')
@@ -65,12 +80,12 @@ class Code_generator(object):
     self.read_input = True
   def generate_call(self, call):
   def generate_write(self, write):
-    self.code.append("__write_at_{}".format(write.line))
+    self.code.append("__write_at_{}:".format(write.line))
     self.generate_expression_evaluator(write.expression)
     self.code.append('\t\tpopq\t%rdi')
     self.code.append('\t\tcall\t__write_stdout')
     self.write_output = True
-  def generate_procedure(self, prcedure):
+  def generate_procedure(self, procedure):
   def generate_variables(self):
     self.code.append('\n\n.data')
     for name, type_object in self.symbol_table.scopes[1].symbols.iteritems():
