@@ -59,6 +59,11 @@ class Code_generator(object):
   def generate_write(self, write):
   def generate_procedure(self, prcedure):
   def generate_variables(self):
+    self.code.append('\n\n.data')
+    for name, type_object in self.symbol_table.scopes[1].symbols.iteritems():
+      if not type(type_object) is symbol_table.Variable:
+        continue
+      self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
   def link_library(self):
     evaluated_to_zero = False
     stderr_printing = False
