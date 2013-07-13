@@ -170,8 +170,6 @@ class Lazy_generator(object):
         self.code.append('\n\t.data')
         printed_data = True
       self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
-  def generate_location_evaluator(self, location):
-    pass
   def generate_condition_evaluator(self, condition):
     self.generate_expression_evaluator(condition.expression_left)
     if not type(condition.expression_right.child) is syntax_tree.Number:
@@ -202,6 +200,69 @@ class Lazy_generator(object):
     else: # >=
       self.code.append("\t\tjge\t\t_true_{}_".format(self.handle))
       self.code.append("\t\tjmp\t\t_false_{}_".format(self.handle))
+  def generate_location_evaluator(self, location):
+    if type(location.child) is syntax_tree.Field:
+      field = location.child
+      self.generate_location_evaluator(field.location)
+      self.code.append('\t\tpopq\t%rax')
+      offset = field.location.type_object.get_offset(field.variable.name)
+      self.code.append("\t\taddq\t${}, %rax".format(offset))
+      self.code.append('\t\tpushq\t%rax')
+    elif type(location.child) is syntax_tree.Index:
+      index = location.child
+      self.create_location_evaluator(index.location)
+      if not type(index.expression.child) is syntax_tree.Number:
+        self.generate_expression_evaluator(index.expression)
+        self.code.append('\t\tpopq\t%rcx')
+        self.code.append('\t\tpopq\t%rax')
+        self.code.append('\t\tcmpq\t$0, %rcx')
+        self.new_handle()
+        self.code.append("\t\tjl\t\t_error_{}_".format(self.handle))
+        self.code.append("\t\tcmpq\t${}, %rcx".format(index.location.type_object.size))
+        self.code.append("\t\tjl\t\t_no_error_{}_".format(self.handle))
+        self.code.append("_error_{}_:".format(self.handle))
+        self.code.append("\t\tmovq\t${}, %rdi".format(index.expression.line))
+        self.code.append('\t\tmovq\t%rcx, %rdx')
+        self.code.append('\t\tjmp\t\t__error_bad_index')
+        self.code.append("_no_error_{}_:".format(self.handle))
+        self.code.append("\t\timulq\t${}, %rcx".format(index.type_object.get_size())
+        self.code.append('\t\taddq\t%rcx, %rax')
+        self.code.append('\t\tpushq\t%rax')
+        self.bad_index = True
+      else:
+        self.code.append('\t\tpopq\t%rax')
+        offset = self.location.type_object.get_offset(index.expression.child.table_entry.value)
+        self.code.append("\t\taddq\t${}, %rax".format(offset))
+        self.code.append('\t\tpushq\t%rax')
+    elif not self.in_procedure:
+      self.code.append("\t\tmovq\t${}_, %rax".format(location.child.name))
+      self.code.append('\t\tpushq\t%rax')
+    else:
+      variable = location.child
+      if variable.name in self.local_variables:
+        offset = self.local_variables.keys().index(variable.name) * 8
+        if not offset:
+          self.code.append('\t\tpushq\t%rbx')
+        else:
+          self.code.append("\t\tleaq\t{}(%rbx), %rax".format(offset))
+          self.code.append('\t\tpushq\t%rax')
+      else:
+        offset = -1
+        n = 2
+        if self.formals:
+          for formal in self.formals:
+            if formal == variable.name:
+              offset = 8 * n
+              break
+            n += 1
+        if not offset is -1:
+          if location.type_object.get_size() > 8:
+            self.code.append("\t\tmovq\t{}(%rbp), %rax".format(offset))
+          else:
+            self.code.append("\t\tleaq\t{}(%rbp), %rax".format(offset))
+        else:
+          self.code.append("\t\tmovq\t${}_, %rax".format(variable.name))
+        self.code.append('\t\tpushq\t%rax')
   def generate_expression_evaluator(self, expression):
     if type(expression.child) is syntax_tree.Number:
       self.code.append("\t\tpushq\t${}".format(expression.child.table_entry.value))
@@ -247,6 +308,7 @@ class Lazy_generator(object):
       self.code.append("\t\tjne\t\t_no_error_{}_".format(self.handle))
       self.code.append("\t\tmovq\t${}, %rdi".format(binary.line))
       self.code.append("\t\tjmp\t\t{}".format(error_function))
+    self.code.append("_no_error_{}_:".format(self.handle))
     self.code.append('\t\tmovq\t%rax, %rdx')
     self.code.append('\t\tsarq\t$63, %rdx')
     self.code.append('\t\tidivq\t%rcx')
