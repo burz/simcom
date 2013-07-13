@@ -32,6 +32,8 @@ class Variable(Entry):
     self.line = line
   def get_box(self):
     return type_object.get_box()
+  def get_size(self):
+    return type_object.get_size()
   def graphical(self):
     node = self.new_node()
     print node, '[label="",shape=circle]'
@@ -43,6 +45,8 @@ class Integer(Entry):
     self.printed = False
   def get_box(self):
     return environment.IntegerBox()
+  def get_size(self):
+    return code_generator.INTEGER_SIZE
   def graphical(self):
     if self.printed:
       return self.printed
@@ -58,6 +62,8 @@ class Array(Entry):
     self.printed = False
   def get_box(self):
     return environment.ArrayBox(self.size, self.type_object.get_box())
+  def get_size(self):
+    return self.size * self.type_object.get_size()
   def graphical(self):
     if self.printed:
       return self.printed
@@ -74,6 +80,10 @@ class Record(Entry):
     self.printed = False
   def get_box(self):
     return environment.RecordBox(self.scope)
+  def get_size(self):
+    size = 0
+    for type_object in self.scope.symbols.values()
+      size += type_object.get_size()
   def graphical(self):
     if self.printed:
       return self.printed
