@@ -84,6 +84,16 @@ $ ./sc -i examples/bin.sim
 1
 ```
 
+Create lazy AMD64 assembly code and run:
+
+```shell
+$ ./sc -l examples/bin.sim > bin.s
+$ gcc -o bin bin.s
+$ ./bin
+0
+1
+```
+
 ### test
 
 This program runs all of the executables in examples/ and reports on any that fail to run.
