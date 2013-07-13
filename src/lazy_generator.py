@@ -55,6 +55,10 @@ class Code_generator(object):
   def generate_if(self, if_statement):
   def generate_repeat(self, repeat):
   def generate_read(self, read):
+    self.code.append("__read_at_{}".format(read.line))
+    self.code.append('\t\tpushq\t%rbx')
+    self.generate_location_evaluator(read.location)
+    self.
   def generate_call(self, call):
   def generate_write(self, write):
   def generate_procedure(self, prcedure):
@@ -64,6 +68,9 @@ class Code_generator(object):
       if not type(type_object) is symbol_table.Variable:
         continue
       self.code.append("{}_:\t\t.space {}".format(name, type_object.get_size()))
+  def generate_location_evaluator(self, location):
+  def generate_condition_evaluator(self, condition):
+  def generate_expression_evaluator(self, expression):
   def link_library(self):
     evaluated_to_zero = False
     stderr_printing = False
