@@ -8,6 +8,7 @@ class Code_generator(object):
     self.tree = tree
     self.reset_library() 
     self.handle = -1
+    self.in_procedure = False
     self.procedures = {}
     self.read_only_declarations = []
     self.code = ['\t.globl\tmain\n']
@@ -131,6 +132,32 @@ class Code_generator(object):
     self.code.append('\t\tcall\t__write_stdout')
     self.write_output = True
   def generate_procedure(self, procedure):
+    self.code.append("__{}__:".format(procedure.name))
+    self.code.append('\t\tpushq\t%rbp')
+    self.code.append('\t\tmovq\t%rsp, %rbp')
+    self.in_procedure = True
+    self.formals = procedure.formals:
+    self.local_variables = []
+    offset = 0
+    for variable in procedure.scope.symbols:
+      if not self.formals or not variable in self.formals:
+        self.local_variables.append(variable)
+        offset += procedure.scope.symbols[variable].get_size()
+    times = offset / 8
+    for i in range(times):
+      self.code.append('\t\tpushq\t$0')
+    self.code.append('\t\tpushq\t%rbx')
+    self.code.append('\t\tleaq\t8(%rsp), %rbx')
+    if procedure.instructions:
+      self.generate_instructions(procedure.instructions.instructions)
+    if procedure.return_expression:
+      self.generate_expresssion_evaluator(procedure.return_expression)
+      self.code.append('\t\tpopq\t%rax')
+    self.in_procedure = False
+    self.code.append('\t\tpopq\t%rbx')
+    self.code.append('\t\tmovq\t%rbp, %rsp')
+    self.code.append('\t\tpopq\t%rbp')
+    self.code.append('\t\tret')
   def generate_variables(self):
     self.code.append('\n\n.data')
     for name, type_object in self.symbol_table.scopes[1].symbols.iteritems():
