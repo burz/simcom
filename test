@@ -1,21 +1,54 @@
 #!/usr/bin/ruby
 
-test_names = Dir['examples/*.sim'].map { |s| s.match(/\/([A-Za-z0-9_]*)/)[1] }
+test_dir = 'examples/'
+
+test_names = Dir["#{test_dir}*.sim"].map { |s| s.match(/\/([A-Za-z0-9_]*)/)[1] }
 
 succesful_tests = 0
 failed_tests = 0
 
 test_names.each do |name|
-  error = `./sc #{ARGV[0]} examples/#{name}.sim #{ARGV[1]} 2>&1`
-  status = $?.exitstatus
-  if status == 0
-    puts "\e[32m$$  Test '#{name}' was successful.\e[0m"
-    succesful_tests += 1
+  if ARGV[0] == '--all'
+    interpreter_error = `./sc -i #{test_dir}#{name}.sim > interpreter_output`
+    if $?.exitstatus == 0
+      lazy_compiler_error = `./sc -l #{test_dir}#{name}.sim | gcc -x assembler -`
+      if $?.exitstatus == 0
+        `./a.out > lazy_compiler_output`
+        output = `diff interpreter_output lazy_compiler_output`
+        if output.empty?
+          puts "\e[32m$$  Test '#{name}' was successful.\e[0m"
+          succesful_tests += 1
+        else
+          puts "\e[31m!!  Test '#{name}' failed with differences (interpreter <-> lazy compiler):\e[0m"
+          puts "^^  #{output.chomp.gsub /\n/, "\n^^  "}"
+          failed_tests += 1
+        end
+      else
+        puts "\e[31m!!  Test '#{name}' failed with output:\e[0m"
+        puts "^^  #{lazy_compiler_error.chomp.gsub /\n/, "\n^^  "}"
+        failed_tests += 1
+      end
+    else
+      puts "\e[31m!!  Test '#{name}' failed with output:\e[0m"
+      puts "^^  #{interpreter_error.chomp.gsub /\n/, "\n^^  "}"
+      failed_tests += 1
+    end
   else
-    puts "\e[31m!!  Test '#{name}' failed with output:\e[0m"
-    puts "^^  #{error.chomp.gsub /\n/, "\n^^  "}"
-    failed_tests += 1
+    error = `./sc #{ARGV[0]} #{test_dir}#{name}.sim #{ARGV[1]} 2>&1`
+    status = $?.exitstatus
+    if status == 0
+      puts "\e[32m$$  Test '#{name}' was successful.\e[0m"
+      succesful_tests += 1
+    else
+      puts "\e[31m!!  Test '#{name}' failed with output:\e[0m"
+      puts "^^  #{error.chomp.gsub /\n/, "\n^^  "}"
+      failed_tests += 1
+    end
   end
+end
+
+if ARGV[0] == '--all'
+  `rm -f interpreter_output lazy_compiler_output`
 end
 
 total_tests = succesful_tests + failed_tests
