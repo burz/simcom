@@ -63,12 +63,30 @@ class Intermediate_code_generator(object):
   def generate_if(self, if_statement):
     left = self.generate_expression_evaluator(if_statement.condition.left_expression)
     right = self.generate_expression_evaluator(if_statement.condition.right_expression)
-    c = Compare(left, right)
+    compare = Compare(left, right)
     self.lines.append(c)
-    label = Label()
-    cj = Conditional_jump('jne', label)
-    self.lines += [cj, label]
+    false = Label()
+    conditional_jump = Conditional_jump(if_statement.condition.relation, false)
+    self.lines.append(conditional_jump)
+    self.generate_instructions(if_statement.instructions_true)
+    if if_statement.instructions_false:
+      end = Label()
+      unconditional_jump = Unconditional_jump(end)
+      self.lines.append(unconditional_jump)
+    self.lines.append(false)
+    if if_statement.instructions_false:
+      self.generate_instructions(if_statement.instructions_false)
+      self.lines.append(end)
   def generate_repeat(self, repeat):
+    start = Label()
+    self.lines.append(start)
+    self.generate_instructions(repeat.instructions)
+    left = self.generate_expression_evaluator(repeat.condition.left_expression)
+    right = self.generate_expression_evaluator(repeat.condition.right_expression)
+    compare = Compare(left, right)
+    self.lines.append(compare)
+    conditional_jump = Conditional_jump(repeat.condition.relation, start)
+    self.lines.append(conditional_jump)
   def generate_read(self, read):
   def generate_call(self, call):
   def generate_write(self, write):
