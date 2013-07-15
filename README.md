@@ -94,6 +94,22 @@ $ ./bin
 1
 ```
 
+Create intermediate code:
+
+```shell
+$ ./sc -m examples/bin.sim
+Binary(mov): $5 -> !0
+Binary(mul): !1 -> !0
+Write: !0
+Binary(mov): $10 -> !2
+Assign: x -> !2
+Binary(mov): $5 -> !3
+Binary(mul): !4 -> !3
+Binary(mov): $7 -> !5
+Division: !3 / !5
+Write: %rdx
+```
+
 ### test
 
 This program runs all of the executables in examples/ and reports on any that fail to run.
