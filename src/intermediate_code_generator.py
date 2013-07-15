@@ -1,5 +1,4 @@
 import syntax_tree
-import symbol_table
 
 class Assign(object):
   def __init__(self, left_value, right_value):
@@ -52,6 +51,14 @@ class Bad_index(object):
     self.line = line
     self.result = result
 
+class Div_by_zero(object):
+  def __init__(self, line):
+    self.line = line
+
+class Mod_by_zero(object):
+  def __init__(self, line):
+    self.line = line
+
 class Intermediate_code_generator(object):
   def generate(self, tree, table):
     self.tree = tree
@@ -59,6 +66,8 @@ class Intermediate_code_generator(object):
     self.lines = []
     self.reset_library()
     self.handle = -1
+    self.generate_instructions(tree.instructions)
+    return self.lines
   def reset_library(self):
     self.div_by_zero = False
     self.mod_by_zero = False
@@ -69,18 +78,18 @@ class Intermediate_code_generator(object):
     self.handle += 1
     return self.handle
   def generate_instructions(self, instructions):
-    for instruction in instruction:
+    for instruction in instructions.instructions:
       self.generate_instruction(instruction)
   def generate_instruction(self, instruction):
-    if type(instruction.child) is symbol_table.Assign:
+    if type(instruction.child) is syntax_tree.Assign:
       self.generate_assign(instruction.child)
-    elif type(instruction.child) is symbol_table.If:
+    elif type(instruction.child) is syntax_tree.If:
       self.generate_if(instruction.child)
-    elif type(instruction.child) is symbol_table.Repeat:
+    elif type(instruction.child) is syntax_tree.Repeat:
       self.generate_repeat(instruction.child)
-    elif type(instruction.child) is symbol_table.Read:
+    elif type(instruction.child) is syntax_tree.Read:
       self.generate_read(instruction.child)
-    elif type(instruction.child) is symbol_table.Call:
+    elif type(instruction.child) is syntax_tree.Call:
       self.generate_call(instruction.child)
     else: # Write
       self.generate_write(instruction.child)
@@ -90,8 +99,8 @@ class Intermediate_code_generator(object):
     assign = Assign(location, expression)
     self.lines.append(assign)
   def generate_if(self, if_statement):
-    left = self.generate_expression_evaluator(if_statement.condition.left_expression)
-    right = self.generate_expression_evaluator(if_statement.condition.right_expression)
+    left = self.generate_expression_evaluator(if_statement.condition.expression_left)
+    right = self.generate_expression_evaluator(if_statement.condition.expression_right)
     compare = Compare(left, right)
     self.lines.append(compare)
     false = Label()
@@ -110,8 +119,8 @@ class Intermediate_code_generator(object):
     start = Label()
     self.lines.append(start)
     self.generate_instructions(repeat.instructions)
-    left = self.generate_expression_evaluator(repeat.condition.left_expression)
-    right = self.generate_expression_evaluator(repeat.condition.right_expression)
+    left = self.generate_expression_evaluator(repeat.condition.expression_left)
+    right = self.generate_expression_evaluator(repeat.condition.expression_right)
     compare = Compare(left, right)
     self.lines.append(compare)
     conditional_jump = Conditional_jump(repeat.condition.relation, start)
@@ -125,16 +134,16 @@ class Intermediate_code_generator(object):
     integer = self.generate_expression_evaluator(write.expression)
     write = Write(integer)
   def generate_location_evaluator(self, location):
-    if type(location.child) is syntax_tree.Index:
+    if type(location.child) is syntax_tree.Field:
       field = location.child
       location = self.generate_location_evaluator(field.location)
       offset = field.location.type_object.get_offset(field.variable.name)
       add = Binary('add', "${}".format(offset), location)
     elif type(location.child) is syntax_tree.Index:
       index = location.child
-      location = self.generate_location_evaluator(self, index.location)
+      location = self.generate_location_evaluator(index.location)
       if not type(index.expression.child) is syntax_tree.Number:
-        expression = self.generate_expression_evaluator(self, index.expression)
+        expression = self.generate_expression_evaluator(index.expression)
         compare = Compare('$0', expression)
         self.lines.append(compare)
         error = Label()
@@ -145,19 +154,19 @@ class Intermediate_code_generator(object):
         no_error = Label()
         conditional_jump = Conditional_jump('<', no_error)
         self.lines += [conditional_jump, error]
-        index_error = Index_error(index.expression.line, expression)
-        self.code += [index_error, no_error]
+        bad_index = Bad_index(index.expression.line, expression)
+        self.lines += [bad_index, no_error]
         multiply = Binary('mul', "${}".format(index.type_object.get_size()), expression)
-        self.code.append(multiply)
+        self.lines.append(multiply)
         add = Binary('add', expression, location)
-        self.code.append(add)
+        self.lines.append(add)
         self.bad_index = True
         return location
       else:
         value = index.expression.child.table_entry.value
         offset = index.location.type_object.get_offset(value)
         add = Binary('add', "${}".format(offset), location)
-        self.code.append(add)
+        self.lines.append(add)
         return location
     else:
       return location.child.name
@@ -170,7 +179,7 @@ class Intermediate_code_generator(object):
       self.lines.append(move)
       return temp_var
     elif type(expression.child) is syntax_tree.Location:
-      location = self.location_evaluator(expression.child)
+      location = self.generate_location_evaluator(expression.child)
       self.new_handle()
       temp_var = "!{}".format(self.handle)
       move_mem = Binary('mov_mem', location, temp_var)
@@ -186,9 +195,9 @@ class Intermediate_code_generator(object):
       elif expression.child.operator == '*':
         return self.generate_addition_like_evaluator(expression.child, 'mul')
       elif expression.child.operator == 'DIV':
-        return self.generate_division_evaluator(expression.child, '__error_div_by_zero')
+        return self.generate_division_evaluator(expression.child)
       else: # MOD
-        return self.generate_division_evaluator(expression.child, '__error_mod_by_zero')
+        return self.generate_division_evaluator(expression.child)
   def generate_addition_like_evaluator(self, binary, operation):
     left = self.generate_expression_evaluator(binary.expression_left)
     if not type(binary.expression_right.child) is syntax_tree.Number:
@@ -205,19 +214,19 @@ class Intermediate_code_generator(object):
       no_error = Label()
       conditional_jump = Conditional_jump('#', Label())
       self.lines.append(conditional_jump)
-      if binary.operation == 'DIV':
+      if binary.operator == 'DIV':
         div_by_zero = Div_by_zero(binary.line)
-        self.code.append(div_by_zero)
+        self.lines.append(div_by_zero)
         self.div_by_zero = True
-      elif binary.operation == 'MOD':
+      elif binary.operator == 'MOD':
         mod_by_zero = Mod_by_zero(binary.line)
-        self.code.append(mod_by_zero)
+        self.lines.append(mod_by_zero)
         self.mod_by_zero = True
-      self.code.append(no_error)
+      self.lines.append(no_error)
     div = Division(left, right)
-    self.code.append(div)
-    if binary.operation == 'DIV':
+    self.lines.append(div)
+    if binary.operator == 'DIV':
       return '%rax'
-    elif binary.operation == 'MOD':
+    elif binary.operator == 'MOD':
       return '%rdx'
 
