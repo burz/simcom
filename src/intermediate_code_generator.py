@@ -4,60 +4,86 @@ class Assign(object):
   def __init__(self, left_value, right_value):
     self.left_value = left_value
     self.right_value = right_value
+  def __repr__(self):
+    return "Assign: {} -> {}".format(self.left_value, self.right_value)
 
 class Binary(object):
   def __init__(self, operation, left_value, right_value):
     self.operation = operation
     self.left_value = left_value
     self.right_value = right_value
+  def __repr__(self):
+    return "Binary({}): {} -> {}".format(self.operation, self.left_value, self.right_value)
 
 class Division(object):
   def __init__(self, left_value, right_value):
     self.left_value = left_value
     self.right_value = right_value
+  def __repr__(self):
+    return "Division: {} / {}".format(self.left_value, self.right_value)
 
 class Compare(object):
   def __init__(self, left_value, right_value):
     self.left_value = left_value
     self.right_value = right_value
+  def __repr__(self):
+    return "Compare: {} {}".format(self.left_value, self.right_value)
 
 class Unconditional_jump(object):
   def __init__(self, line):
     self.line = line
+  def __repr__(self):
+    return "Unconditional Jump: goto {}".format(self.line)
 
 class Conditional_jump(object):
   def __init__(self, operation, line):
     self.operation = operation
     self.line = line
+  def __repr__(self):
+    return "Conditional Jump: {} goto {}".format(self.operation, self.line)
 
 class Call(object):
   def __init__(self, call):
     self.call = call
+  def __repr__(self):
+    return "Call: {}".format(self.call.definition.name)
 
 class Write(object):
   def __init__(self, value):
     self.value = value
+  def __repr__(self):
+    return "Write: {}".format(self.value)
 
 class Read(object):
   def __init__(self, read):
     self.read = read
+  def __repr__(self):
+    return "Read: {}".format(self.read)
 
 class Label(object):
   def __init__(self):
     pass
+  def __repr__(self):
+    return "Label: {}".format(id(self))
 
 class Bad_index(object):
   def __init__(self, line, result):
     self.line = line
     self.result = result
+  def __repr__(self):
+    return "Bad Index: {} {}".format(self.line, self.result)
 
 class Div_by_zero(object):
   def __init__(self, line):
     self.line = line
+  def __repr__(self):
+    return "Div By Zero: {}".format(self.line)
 
 class Mod_by_zero(object):
   def __init__(self, line):
     self.line = line
+  def __repr__(self):
+    return "Mod By Zero: {}".format(self.line)
 
 class Intermediate_code_generator(object):
   def generate(self, tree, table):
@@ -126,13 +152,16 @@ class Intermediate_code_generator(object):
     conditional_jump = Conditional_jump(repeat.condition.relation, start)
     self.lines.append(conditional_jump)
   def generate_read(self, read):
-    read = Read(read)
+    location = self.generate_location_evaluator(read.location)
+    read = Read(location)
     self.lines.append(read)
   def generate_call(self, call):
     call = Call(call)
+    self.lines.append(call)
   def generate_write(self, write):
     integer = self.generate_expression_evaluator(write.expression)
     write = Write(integer)
+    self.lines.append(write)
   def generate_location_evaluator(self, location):
     if type(location.child) is syntax_tree.Field:
       field = location.child
