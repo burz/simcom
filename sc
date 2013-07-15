@@ -6,8 +6,9 @@ from src.scanner import Scanner, Scanner_error
 from src.parser import Parser, Parser_error
 from src.interpreter import Interpreter, Interpreter_error
 from src.lazy_generator import Lazy_generator
+from src.intermediate_code_generator import Intermediate_code_generator
 
-usage = "error: sc usage: ./sc [-(s: | t | a | i | l)] [filename]\n"
+usage = "error: sc usage: ./sc [-(s: | t | a | i | l | m)] [filename]\n"
 
 filename = False
 table = False
@@ -21,7 +22,7 @@ if not len(sys.argv) <= 3: # error check the number of arguments
   sys.exit(1)
 elif len(sys.argv) is 1:
   table = tree = compile = True
-elif len(sys.argv) is 2 and not sys.argv[1] in ['-s', '-t', '-a', '-i', '-l']:
+elif len(sys.argv) is 2 and not sys.argv[1] in ['-s', '-t', '-a', '-i', '-l', '-m']:
   filename = sys.argv[1]
   table = tree = compile = True
 else:
@@ -35,11 +36,13 @@ else:
     table = tree = interpret = True
   elif sys.argv[1] == '-l':
     table = tree = lazy_compile = True
+  elif sys.argv[1] == '-m':
+    table = tree = intermediate = True
   elif sys.argv[1][0] == '-':
     sys.stderr.write(usage)
     sys.exit(1)
   else:
-    table = tree = compile = True
+    table = tree = intermediate = compile = True
   if len(sys.argv) is 3:
     filename = sys.argv[2]
   elif len(sys.argv) is 2 and compile:
@@ -57,7 +60,7 @@ try:
     if not tree:
       symbol_table.graphical()
       pass
-    elif tree and not interpret and not lazy_compile and not compile:
+    elif tree and not interpret and not lazy_compile and not intermediate and not compile:
       syntax_tree.graphical()
     elif interpret:
       interpreter = Interpreter()
@@ -68,8 +71,14 @@ try:
       for line in code:
         print line
       print
-    else:
-      pass
+    elif intermediate:
+      intermediate_code_generator = Intermediate_code_generator()
+      lines = intermediate_code_generator.generate(syntax_tree, symbol_table)
+      if not compile:
+        for line in lines:
+          print line
+      else:
+        pass
 except Scanner_error as error:
   sys.stderr.write(error.__str__() + "\n")
   sys.exit(1)
