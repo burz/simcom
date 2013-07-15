@@ -31,8 +31,13 @@ class Conditional_jump(object):
     self.line = line
 
 class Call(object):
-  def __init__(self, procedure):
+  def __init__(self, procedure, library = False):
     self.procedure = procedure
+    self.library = library
+
+class Write(object):
+  def __init__(self, value):
+    self.value = value
 
 class Label(object):
   def __init__(self):
@@ -43,6 +48,13 @@ class Intermediate_code_generator(object):
     self.tree = tree
     self.table = table
     self.lines = []
+    self.reset_library()
+  def reset_library(self):
+    self.div_by_zero = False
+    self.mod_by_zero = False
+    self.bad_index = False
+    self.write_output = False
+    self.read_input = False
   def generate_instructions(self, instructions):
     for instruction in instruction:
       self.generate_instruction(instruction)
@@ -88,6 +100,12 @@ class Intermediate_code_generator(object):
     conditional_jump = Conditional_jump(repeat.condition.relation, start)
     self.lines.append(conditional_jump)
   def generate_read(self, read):
+    call = Call('__read', True)
+    self.lines.append(call)
   def generate_call(self, call):
   def generate_write(self, write):
+    integer = self.generate_expression_evaluator(write.expression)
+    write = Write(integer)
+  def generate_location_evaluator(self, location):
+  def generate_expression_evaluator(self, expression):
 
