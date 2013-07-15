@@ -31,13 +31,16 @@ class Conditional_jump(object):
     self.line = line
 
 class Call(object):
-  def __init__(self, procedure, library = False):
-    self.procedure = procedure
-    self.library = library
+  def __init__(self, call):
+    self.call = call
 
 class Write(object):
   def __init__(self, value):
     self.value = value
+
+class Read(object):
+  def __init__(self, read):
+    self.read = read
 
 class Label(object):
   def __init__(self):
@@ -72,6 +75,10 @@ class Intermediate_code_generator(object):
     else: # Write
       self.generate_write(instruction.child)
   def generate_assign(self, assign):
+    location = self.generate_location_evaluator(assign.location)
+    expression = self.generate_expression_evaluator(assign.expression)
+    assign = Assign(location, expression)
+    self.lines.append(assign)
   def generate_if(self, if_statement):
     left = self.generate_expression_evaluator(if_statement.condition.left_expression)
     right = self.generate_expression_evaluator(if_statement.condition.right_expression)
@@ -100,9 +107,10 @@ class Intermediate_code_generator(object):
     conditional_jump = Conditional_jump(repeat.condition.relation, start)
     self.lines.append(conditional_jump)
   def generate_read(self, read):
-    call = Call('__read', True)
-    self.lines.append(call)
+    read = Read(read)
+    self.lines.append(read)
   def generate_call(self, call):
+    call = Call(call)
   def generate_write(self, write):
     integer = self.generate_expression_evaluator(write.expression)
     write = Write(integer)
