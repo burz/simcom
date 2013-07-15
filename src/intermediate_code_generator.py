@@ -58,12 +58,16 @@ class Intermediate_code_generator(object):
     self.table = table
     self.lines = []
     self.reset_library()
+    self.handle = -1
   def reset_library(self):
     self.div_by_zero = False
     self.mod_by_zero = False
     self.bad_index = False
     self.write_output = False
     self.read_input = False
+  def new_handle(self):
+    self.handle += 1
+    return self.handle
   def generate_instructions(self, instructions):
     for instruction in instruction:
       self.generate_instruction(instruction)
@@ -158,4 +162,62 @@ class Intermediate_code_generator(object):
     else:
       return location.child.name
   def generate_expression_evaluator(self, expression):
+    if type(expression.child) is syntax_tree.Number:
+      self.new_handle()
+      temp_var = "!{}".format(self.handle)
+      value = expression.child.table_entry.value
+      move = Binary('mov', "${}".format(value), temp_var)
+      self.lines.append(move)
+      return temp_var
+    elif type(expression.child) is syntax_tree.Location:
+      location = self.location_evaluator(expression.child)
+      self.new_handle()
+      temp_var = "!{}".format(self.handle)
+      move_mem = Binary('mov_mem', location, temp_var)
+      return temp_var
+    elif type(expression.child) is syntax_tree.Call:
+      self.generate_call(expression.child)
+      return '%rax'
+    elif type(expression.child) is syntax_tree.Binary:
+      if expression.child.operator == '+':
+        return self.generate_addition_like_evaluator(expression.child, 'add')
+      elif expression.child.operator == '-':
+        return self.generate_addition_like_evaluator(expression.child, 'sub')
+      elif expression.child.operator == '*':
+        return self.generate_addition_like_evaluator(expression.child, 'mul')
+      elif expression.child.operator == 'DIV':
+        return self.generate_division_evaluator(expression.child, '__error_div_by_zero')
+      else: # MOD
+        return self.generate_division_evaluator(expression.child, '__error_mod_by_zero')
+  def generate_addition_like_evaluator(self, binary, operation):
+    left = self.generate_expression_evaluator(binary.expression_left)
+    if not type(binary.expression_right.child) is syntax_tree.Number:
+      right = self.generate_expression_evaluator(binary.expression_right)
+      binary = Binary(operation, right, left)
+      self.lines.append(binary)
+    return left
+  def generate_division_evaluator(self, binary):
+    left = self.generate_expression_evaluator(binary.expression_left)
+    right = self.generate_expression_evaluator(binary.expression_right)
+    if not type(binary.expression_right.child) is syntax_tree.Number:
+      compare = Compare('$0', right)
+      self.lines.append(compare)
+      no_error = Label()
+      conditional_jump = Conditional_jump('#', Label())
+      self.lines.append(conditional_jump)
+      if binary.operation == 'DIV':
+        div_by_zero = Div_by_zero(binary.line)
+        self.code.append(div_by_zero)
+        self.div_by_zero = True
+      elif binary.operation == 'MOD':
+        mod_by_zero = Mod_by_zero(binary.line)
+        self.code.append(mod_by_zero)
+        self.mod_by_zero = True
+      self.code.append(no_error)
+    div = Division(left, right)
+    self.code.append(div)
+    if binary.operation == 'DIV':
+      return '%rax'
+    elif binary.operation == 'MOD':
+      return '%rdx'
 

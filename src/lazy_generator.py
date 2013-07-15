@@ -313,7 +313,7 @@ class Lazy_generator(object):
         self.div_by_zero = True
       if error_function == '__error_mod_by_zero':
         self.mod_by_zero = True
-    self.code.append("_no_error_{}_:".format(self.handle))
+      self.code.append("_no_error_{}_:".format(self.handle))
     self.code.append('\t\tmovq\t%rax, %rdx')
     self.code.append('\t\tsarq\t$63, %rdx')
     self.code.append('\t\tidivq\t%rcx')
