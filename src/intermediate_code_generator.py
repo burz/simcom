@@ -1,3 +1,4 @@
+import syntax_tree
 import symbol_table
 
 class Assign(object):
@@ -46,6 +47,11 @@ class Label(object):
   def __init__(self):
     pass
 
+class Bad_index(object):
+  def __init__(self, line, result):
+    self.line = line
+    self.result = result
+
 class Intermediate_code_generator(object):
   def generate(self, tree, table):
     self.tree = tree
@@ -83,7 +89,7 @@ class Intermediate_code_generator(object):
     left = self.generate_expression_evaluator(if_statement.condition.left_expression)
     right = self.generate_expression_evaluator(if_statement.condition.right_expression)
     compare = Compare(left, right)
-    self.lines.append(c)
+    self.lines.append(compare)
     false = Label()
     conditional_jump = Conditional_jump(if_statement.condition.relation, false)
     self.lines.append(conditional_jump)
@@ -115,5 +121,41 @@ class Intermediate_code_generator(object):
     integer = self.generate_expression_evaluator(write.expression)
     write = Write(integer)
   def generate_location_evaluator(self, location):
+    if type(location.child) is syntax_tree.Index:
+      field = location.child
+      location = self.generate_location_evaluator(field.location)
+      offset = field.location.type_object.get_offset(field.variable.name)
+      add = Binary('add', "${}".format(offset), location)
+    elif type(location.child) is syntax_tree.Index:
+      index = location.child
+      location = self.generate_location_evaluator(self, index.location)
+      if not type(index.expression.child) is syntax_tree.Number:
+        expression = self.generate_expression_evaluator(self, index.expression)
+        compare = Compare('$0', expression)
+        self.lines.append(compare)
+        error = Label()
+        conditional_jump = Conditional_jump('<', error)
+        self.lines.append(conditional_jump)
+        compare = Compare("${}".format(index.location.type_object.size), expression)
+        self.lines.append(compare)
+        no_error = Label()
+        conditional_jump = Conditional_jump('<', no_error)
+        self.lines += [conditional_jump, error]
+        index_error = Index_error(index.expression.line, expression)
+        self.code += [index_error, no_error]
+        multiply = Binary('mul', "${}".format(index.type_object.get_size()), expression)
+        self.code.append(multiply)
+        add = Binary('add', expression, location)
+        self.code.append(add)
+        self.bad_index = True
+        return location
+      else:
+        value = index.expression.child.table_entry.value
+        offset = index.location.type_object.get_offset(value)
+        add = Binary('add', "${}".format(offset), location)
+        self.code.append(add)
+        return location
+    else:
+      return location.child.name
   def generate_expression_evaluator(self, expression):
 
