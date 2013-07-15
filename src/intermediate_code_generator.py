@@ -1,11 +1,11 @@
 import syntax_tree
 
 class Assign(object):
-  def __init__(self, left_value, right_value):
-    self.left_value = left_value
-    self.right_value = right_value
+  def __init__(self, location_value, expression_value):
+    self.location_value = location_value
+    self.expression_value = expression_value
   def __repr__(self):
-    return "Assign: {} -> {}".format(self.left_value, self.right_value)
+    return "Assign: {} -> {}".format(self.expression_value, self.location_value)
 
 class Binary(object):
   def __init__(self, operation, left_value, right_value):
