@@ -99,14 +99,14 @@ Create intermediate code:
 ```shell
 $ ./sc -m examples/bin.sim
 Binary(mov): $5 -> !0
-Binary(mul): !1 -> !0
+Binary(mul): x -> !0
 Write: !0
-Binary(mov): $10 -> !2
-Assign: x -> !2
-Binary(mov): $5 -> !3
-Binary(mul): !4 -> !3
-Binary(mov): $7 -> !5
-Division: !3 / !5
+Binary(mov): $10 -> !1
+Assign: !1 -> x
+Binary(mov): $5 -> !2
+Binary(mul): x -> !2
+Binary(mov): $7 -> !3
+Division: !2 / !3
 Write: %rdx
 ```
 
