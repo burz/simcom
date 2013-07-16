@@ -224,7 +224,7 @@ class Intermediate_code_generator(object):
       return location
     elif type(expression.child) is syntax_tree.Call:
       self.generate_call(expression.child)
-      return '%rax'
+      return '>%rax'
     elif type(expression.child) is syntax_tree.Binary:
       if expression.child.operator == '+':
         return self.generate_addition_like_evaluator(expression.child, 'add')
@@ -264,7 +264,7 @@ class Intermediate_code_generator(object):
     div = Division(left, right)
     self.lines.append(div)
     if binary.operator == 'DIV':
-      return '%rax'
+      return '>%rax'
     elif binary.operator == 'MOD':
-      return '%rdx'
+      return '>%rdx'
 
