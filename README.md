@@ -10,7 +10,7 @@ A product of [Peter Fröhlich's](http://gaming.jhu.edu/~phf/) Spring 2013
 
 ## Language
 
-In our implementation, the SIMPLE language is a statically typed imperative language with a single basic data type
+In our implementation, the SIMPLE language is a statically typed, imperative language with a single basic data type
 INTEGER as well as two constructive data types ARRAY and RECORD.
 
 Please see the grammar for the language in doc/SIMPLE_grammar.txt, the example programs in examples/, or the class
@@ -18,18 +18,19 @@ website for more information about the SIMPLE language.
 
 ## Executables
 
-Consider the bin program in examples/bin.sim which writes the result of two expressions to the screen:
+Consider the iffy program in examples/iffy.sim which writes 0 to the screen:
 
 ```SIMPLE
-PROGRAM bin;
-  CONST a = 5;
-        b = 7;
-  VAR x : INTEGER;
+PROGRAM iffy;
+  VAR x, y, z : INTEGER;
 BEGIN
-  WRITE a * x;
-  x := 10; 
-  WRITE (a * x) MOD b
-END bin.
+  x := 6;
+  IF x MOD 200 >= 56 THEN
+    WRITE 1
+  ELSE
+    WRITE 0
+  END 
+END iffy.
 ```
 
 ### sc - the SIMPLE compiler
@@ -38,24 +39,25 @@ Print out all the tokens in a program:
 
 
 ```shell
-$ ./sc -s examples/bin.sim
+$ ./sc -s examples/iffy.sim
 PROGRAM@1
-identifier<bin>@1
+identifier<iffy>@1
 ;@1
-CONST@2
-identifier<a>@2
-=@2
-integer<5>@2
-;@2
-identifier<b>@3
-=@3
-integer<7>@3
-;@3
-VAR@4
+VAR@2
+identifier<x>@2
+,@2
+identifier<y>@2
+,@2
+identifier<z>@2
+:@2
+identifier<INTEGER>@2
 ...
+WRITE@8
+integer<0>@8
 END@9
-identifier<bin>@9
-.@9
+END@10
+identifier<iffy>@10
+.@10
 ```
 
 Create a graphical representation of the symbol table (with [dot] installed):
@@ -63,60 +65,62 @@ Create a graphical representation of the symbol table (with [dot] installed):
 [dot]: http://www.graphviz.org/
 
 ```shell
-$ ./sc -t examples/bin.sim | dot -T jpeg > table.jpg
+$ ./sc -t examples/iffy.sim | dot -T jpeg > table.jpg
 ```
 
-![symbol table](http://i.imgur.com/x9i89hg.jpg)
+![symbol table](http://i.imgur.com/fdKonuB.jpg)
 
 Create a graphical representation of the syntax tree (with [dot] installed):
 
 ```shell
-$ ./sc -a examples/bin.sim | dot -T jpeg > tree.jpg
+$ ./sc -a examples/iffy.sim | dot -T jpeg > tree.jpg
 ```
 
-![syntax tree](http://i.imgur.com/IQ3oZkV.jpg)
+![syntax tree](http://i.imgur.com/CjbqH7i.jpg)
 
 Run the program in with the interpreter:
 
 ```shell
-$ ./sc -i examples/bin.sim
+$ ./sc -i examples/iffy.sim
 0
-1
 ```
 
 Create lazy AMD64 assembly code and run:
 
 ```shell
-$ ./sc -l examples/bin.sim > bin.s
-$ gcc -o bin bin.s
-$ ./bin
+$ ./sc -l examples/iffy.sim > iffy.s
+$ gcc -o iffy iffy.s
+$ ./iffy
 0
-1
 ```
 
 Create intermediate code:
 
 ```shell
-$ ./sc -m examples/bin.sim
-Binary(mov): $5 -> !0
-Binary(mul): x -> !0
-Write: !0
-Binary(mov): $10 -> !1
-Assign: !1 -> x
-Binary(mov): $5 -> !2
-Binary(mul): x -> !2
-Binary(mov): $7 -> !3
-Division: !2 / !3
-Write: %rdx
+$ ./sc -m examples/iffy.sim
+Binary(mov): $6 -> !0
+Assign: !0 -> x
+Binary(mov): $200 -> !1
+Division: x / !1
+Binary(mov): $56 -> !2
+Compare: >%rdx !2
+Conditional Jump: >= goto Label: 4540158288
+Binary(mov): $1 -> !3
+Write: !3
+Unconditional Jump: goto Label: 4540158416
+Label: 4540158288
+Binary(mov): $0 -> !4
+Write: !4
+Label: 4540158416
 ```
 
 Create the flow graph block representation of the program (with [dot] installed):
 
 ```shell
-$ ./sc -f examples/bin.sim | dot -T jpeg > flow_graph.jpg
+$ ./sc -f examples/iffy.sim | dot -T jpeg > flow_graph.jpg
 ```
 
-![flow_graph](http://i.imgur.com/LXZ4cip.jpg)
+![flow_graph](http://i.imgur.com/2WgWn4d.jpg)
 
 ### test
 
