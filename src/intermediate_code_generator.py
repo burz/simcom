@@ -32,15 +32,21 @@ class Compare(object):
 class Unconditional_jump(object):
   def __init__(self, line):
     self.line = line
-  def __repr__(self):
-    return "Unconditional Jump: goto {}".format(self.line)
+  def __repr__(self, goto = True):
+    if goto:
+      return "Unconditional Jump: goto {}".format(self.line)
+    else:
+      return 'Unconditional Jump'
 
 class Conditional_jump(object):
   def __init__(self, operation, line):
     self.operation = operation
     self.line = line
-  def __repr__(self):
-    return "Conditional Jump: {} goto {}".format(self.operation, self.line)
+  def __repr__(self, goto = True):
+    if goto:
+      return "Conditional Jump: {} goto {}".format(self.operation, self.line)
+    else:
+      return "Conditional Jump: {}".format(self.operation)
 
 class Call(object):
   def __init__(self, call):
@@ -213,7 +219,7 @@ class Intermediate_code_generator(object):
         self.new_handle()
         temp_var = "!{}".format(self.handle)
         move_mem = Binary('mov_mem', location, temp_var)
-        self.lines.add(move_mem)
+        self.lines.append(move_mem)
         return temp_var
       return location
     elif type(expression.child) is syntax_tree.Call:
