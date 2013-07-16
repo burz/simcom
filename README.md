@@ -110,6 +110,14 @@ Division: !2 / !3
 Write: %rdx
 ```
 
+Create the flow graph block representation of the program (with [dot] installed):
+
+```shell
+$ ./sc -f examples/bin.sim | dot -T jpeg > flow_graph.jpg
+```
+
+![flow_graph](http://i.imgur.com/LXZ4cip.jpg)
+
 ### test
 
 This program runs all of the executables in examples/ and reports on any that fail to run.
