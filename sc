@@ -7,14 +7,17 @@ from src.parser import Parser, Parser_error
 from src.interpreter import Interpreter, Interpreter_error
 from src.lazy_generator import Lazy_generator
 from src.intermediate_code_generator import Intermediate_code_generator
+from src.flow_graph import Flow_graph
 
-usage = "error: sc usage: ./sc [-(s: | t | a | i | l | m)] [filename]\n"
+usage = "error: sc usage: ./sc [-(s: | t | a | i | l | m | f)] [filename]\n"
 
 filename = False
 table = False
 tree = False
 interpret = False
 lazy_compile = False
+intermediate = False
+flow = False
 compile = False
 
 if not len(sys.argv) <= 3: # error check the number of arguments
@@ -22,7 +25,7 @@ if not len(sys.argv) <= 3: # error check the number of arguments
   sys.exit(1)
 elif len(sys.argv) is 1:
   table = tree = compile = True
-elif len(sys.argv) is 2 and not sys.argv[1] in ['-s', '-t', '-a', '-i', '-l', '-m']:
+elif len(sys.argv) is 2 and not sys.argv[1] in ['-s', '-t', '-a', '-i', '-l', '-m', '-f']:
   filename = sys.argv[1]
   table = tree = compile = True
 else:
@@ -38,11 +41,13 @@ else:
     table = tree = lazy_compile = True
   elif sys.argv[1] == '-m':
     table = tree = intermediate = True
+  elif sys.argv[1] == '-f':
+    table = tree = intermediate = flow = True
   elif sys.argv[1][0] == '-':
     sys.stderr.write(usage)
     sys.exit(1)
   else:
-    table = tree = intermediate = compile = True
+    table = tree = intermediate = flow = compile = True
   if len(sys.argv) is 3:
     filename = sys.argv[2]
   elif len(sys.argv) is 2 and compile:
@@ -74,11 +79,15 @@ try:
     elif intermediate:
       intermediate_code_generator = Intermediate_code_generator()
       lines = intermediate_code_generator.generate(syntax_tree, symbol_table)
-      if not compile:
+      if not flow:
         for line in lines:
           print line
       else:
-        pass
+        flow_graph = Flow_graph(lines)
+        if not compile:
+          flow_graph.graphical()
+        else:
+          pass
 except Scanner_error as error:
   sys.stderr.write(error.__str__() + "\n")
   sys.exit(1)
