@@ -25,8 +25,8 @@ class Block(object):
     if self.printed:
       return self.printed
     node = self.new_node()
-    content = ""
-    for line in self.lines:
+    content = self.lines[0].__repr__()
+    for line in self.lines[1:]:
       content += '\\n' + line.__repr__()
     print node, '[label="' + content + '",shape=rectangle]'
     if self.next_block and not self.next_block.is_end():
