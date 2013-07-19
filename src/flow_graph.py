@@ -115,6 +115,10 @@ class Flow_graph(object):
       current_block = current_block.next_block
     self.live = {}
     for block in blocks[::-1]:
+      block.live_on_exit = []  
+      for location in self.live:
+        if self.live[location]:
+          block.live_on_exit.append(self.live[location])
       for line in block.lines[::-1]:
         if type(line) is intermediate_code_generator.Assign:
           line.location_live = self.lookup_status(line.location_value)
@@ -137,6 +141,10 @@ class Flow_graph(object):
           for location in self.live:
             self.set_status(location, False)
           self.set_status(line.value, True)
+      block.live_on_entry = []  
+      for location in self.live:
+        if self.live[location]:
+          block.live_on_entry.append(self.live[location])
   def set_status(self, location, live):
     if not location[0] == '$':
       self.live[location] = live
