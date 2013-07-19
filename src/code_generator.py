@@ -1,4 +1,5 @@
 registers = ['%rax', '%rcx', '%rdx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11']
+callee_registers = ['%rbx', '%r12', '%r13', '%r14', '%r15']
 
 class Location_descriptors(object):
   def __init__(self):
@@ -16,6 +17,20 @@ class Location_descriptors(object):
     self.registers[register] = []
   def clear_address_descriptor(self, address):
     self.addresses[address] = []
+  def empty_register(self):
+    for register in self.registers:
+      if not self.registers[register]:
+        return register
+    return False
+  def get_registers(self, left, right, no_assign = False):
+    left_register, code = get_left_register(left)
+    if no_assign:
+      right_register, new_code = get_left_register(right)
+    else:
+      right_register, new_code = get_right_register(right)
+    return left_register, right_register, code + new_code
+  def get_left_register(self, left):
+  def get_right_register(self, right):
 
 class Code_generator(object):
   def generate(self, flow_graph):
