@@ -104,6 +104,8 @@ class Code_generator(object):
     else: # >=
       self.code.append("\t\tjge\t\t__block__{}".format(jump.block.block_id))
   def generate_call(self, call):
+# reset register descriptors
+    self.code.append("\t\tcall\t_function_{}".format(call.call.defintion.name))
   def generate_write(self, write):
   def generate_read(self, read):
   def generate_bad_index(self, bad_index):
