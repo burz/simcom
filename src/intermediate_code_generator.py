@@ -30,8 +30,8 @@ class Compare(object):
     return "Compare: {} {}".format(self.left_value, self.right_value)
 
 class Unconditional_jump(object):
-  def __init__(self, block):
-    self.block = block
+  def __init__(self, line):
+    self.line = line
   def __repr__(self, goto = True):
     if goto:
       return "Unconditional Jump: goto {}".format(self.line)
@@ -39,9 +39,9 @@ class Unconditional_jump(object):
       return 'Unconditional Jump'
 
 class Conditional_jump(object):
-  def __init__(self, operation, block):
+  def __init__(self, operation, line):
     self.operation = operation
-    self.block = block
+    self.line = line
   def __repr__(self, goto = True):
     if goto:
       return "Conditional Jump: {} goto {}".format(self.operation, self.line)
@@ -174,6 +174,8 @@ class Intermediate_code_generator(object):
       location = self.generate_location_evaluator(field.location)
       offset = field.location.type_object.get_offset(field.variable.name)
       add = Binary('add', "${}".format(offset), location)
+      self.lines.append(add)
+      return location
     elif type(location.child) is syntax_tree.Index:
       index = location.child
       location = self.generate_location_evaluator(index.location)
