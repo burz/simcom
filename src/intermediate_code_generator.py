@@ -215,13 +215,11 @@ class Intermediate_code_generator(object):
       return temp_var
     elif type(expression.child) is syntax_tree.Location:
       location = self.generate_location_evaluator(expression.child)
-      if not type(expression.child.child) is syntax_tree.Variable:
-        self.new_handle()
-        temp_var = "!{}".format(self.handle)
-        move_mem = Binary('mov_mem', location, temp_var)
-        self.lines.append(move_mem)
-        return temp_var
-      return location
+      self.new_handle()
+      temp_var = "!{}".format(self.handle)
+      move_mem = Binary('mov_mem', location, temp_var)
+      self.lines.append(move_mem)
+      return temp_var
     elif type(expression.child) is syntax_tree.Call:
       self.generate_call(expression.child)
       return '>%rax'

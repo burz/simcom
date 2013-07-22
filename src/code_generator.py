@@ -76,6 +76,11 @@ class Code_generator(object):
       self.generate_mod_by_zero(line)
   def generate_assign(self, assign):
   def generate_binary(self, binary):
+    left, right = self.descriptors.get_registers(binary.left_value, binary.right_value)
+    if binary.operation == 'mov_mem':
+      self.code.append("\t\tmov\t({}), {}".format(left, right))
+    else:
+      self.code.append("\t\t{}\t{}, {}".format(binary.operation, left, right))
   def generate_division(self, division):
   def generate_compare(self, compare):
   def generate_unconditional_jump(self, jump):
