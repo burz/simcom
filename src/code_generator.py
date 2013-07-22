@@ -85,7 +85,13 @@ class Code_generator(object):
   def generate_read(self, read):
   def generate_bad_index(self, bad_index):
   def generate_div_by_zero(self, div_by_zero):
+    self.code.append("\t\tmovq\t${}, %rdi".format(div_by_zero.line))
+    self.code.append('\t\tjmp\t\t__error_div_by_zero')
+    self.div_by_zero = True
   def generate_mod_by_zero(self, mod_by_zero):
+    self.code.append("\t\tmovq\t${}, %rdi".format(mod_by_zero.line))
+    self.code.append('\t\tjmp\t\t__error_mod_by_zero')
+    self.mod_by_zero = True
   def link_library(self):
     evaluated_to_zero = False
     stderr_printing = False
