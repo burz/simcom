@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-test_dir = 'examples/'
+test_dir = 'tests/'
 
 test_names = Dir["#{test_dir}*.sim"].map { |s| s.match(/\/([A-Za-z0-9_]*)/)[1] }
 
