@@ -142,7 +142,14 @@ class Code_generator(object):
     self.code.append('\t\tcall\t__write_stdout')
     self.write_output = True
   def generate_read(self, read):
+# reset register descriptors
+# mark %rax as holding >%rax
   def generate_bad_index(self, bad_index):
+    result = self.get_left_register(bad_index.expression)
+    self.code.append("\t\tmovq\t${}, %rdi".format(bad_index.line))
+    self.code.append("\t\tmovq\t{}, %rdx".format(result))
+    self.code.append('\t\tjmp\t\t__error_bad_index')
+    self.bad_index = True
   def generate_div_by_zero(self, div_by_zero):
     self.code.append("\t\tmovq\t${}, %rdi".format(div_by_zero.line))
     self.code.append('\t\tjmp\t\t__error_div_by_zero')
