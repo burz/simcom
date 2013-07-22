@@ -30,8 +30,8 @@ class Compare(object):
     return "Compare: {} {}".format(self.left_value, self.right_value)
 
 class Unconditional_jump(object):
-  def __init__(self, line):
-    self.line = line
+  def __init__(self, block):
+    self.block = block
   def __repr__(self, goto = True):
     if goto:
       return "Unconditional Jump: goto {}".format(self.line)
@@ -39,9 +39,9 @@ class Unconditional_jump(object):
       return 'Unconditional Jump'
 
 class Conditional_jump(object):
-  def __init__(self, operation, line):
+  def __init__(self, operation, block):
     self.operation = operation
-    self.line = line
+    self.block = block
   def __repr__(self, goto = True):
     if goto:
       return "Conditional Jump: {} goto {}".format(self.operation, self.line)

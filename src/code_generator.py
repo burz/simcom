@@ -89,6 +89,7 @@ class Code_generator(object):
     left, right = self.descriptors.get_registers(compare.left_value, compare.right_value)
     self.code.append("\t\tcmpq\t{}, {}".format(left, right))
   def generate_unconditional_jump(self, jump):
+    self.code.append("\t\tjmp\t\t{}".format(jump.block))
   def generate_conditional_jump(self, jump):
   def generate_call(self, call):
   def generate_write(self, write):
