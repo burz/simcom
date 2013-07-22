@@ -13,12 +13,12 @@ A product of [Peter Fröhlich's](http://gaming.jhu.edu/~phf/) Spring 2013
 In our implementation, the SIMPLE language is a statically typed, imperative language with a single basic data type
 INTEGER as well as two constructive data types ARRAY and RECORD.
 
-Please see the grammar for the language in doc/SIMPLE_grammar.txt, the example programs in examples/, or the class
+Please see the grammar for the language in doc/SIMPLE_grammar.txt, the some of the code in tests/, or the class
 website for more information about the SIMPLE language.
 
 ## Executables
 
-Consider the iffy program in examples/iffy.sim which writes 0 to the screen:
+Consider the iffy program in tests/iffy.sim which writes 0 to the screen:
 
 ```SIMPLE
 PROGRAM iffy;
@@ -39,7 +39,7 @@ Print out all the tokens in a program:
 
 
 ```shell
-$ ./sc -s examples/iffy.sim
+$ ./sc -s tests/iffy.sim
 PROGRAM@1
 identifier<iffy>@1
 ;@1
@@ -65,7 +65,7 @@ Create a graphical representation of the symbol table (with [dot] installed):
 [dot]: http://www.graphviz.org/
 
 ```shell
-$ ./sc -t examples/iffy.sim | dot -T jpeg > table.jpg
+$ ./sc -t tests/iffy.sim | dot -T jpeg > table.jpg
 ```
 
 ![symbol table](http://i.imgur.com/fdKonuB.jpg)
@@ -73,7 +73,7 @@ $ ./sc -t examples/iffy.sim | dot -T jpeg > table.jpg
 Create a graphical representation of the syntax tree (with [dot] installed):
 
 ```shell
-$ ./sc -a examples/iffy.sim | dot -T jpeg > tree.jpg
+$ ./sc -a tests/iffy.sim | dot -T jpeg > tree.jpg
 ```
 
 ![syntax tree](http://i.imgur.com/CjbqH7i.jpg)
@@ -81,14 +81,14 @@ $ ./sc -a examples/iffy.sim | dot -T jpeg > tree.jpg
 Run the program in with the interpreter:
 
 ```shell
-$ ./sc -i examples/iffy.sim
+$ ./sc -i tests/iffy.sim
 0
 ```
 
 Create lazy AMD64 assembly code and run:
 
 ```shell
-$ ./sc -l examples/iffy.sim > iffy.s
+$ ./sc -l tests/iffy.sim > iffy.s
 $ gcc -o iffy iffy.s
 $ ./iffy
 0
@@ -97,7 +97,7 @@ $ ./iffy
 Create intermediate code:
 
 ```shell
-$ ./sc -m examples/iffy.sim
+$ ./sc -m tests/iffy.sim
 Binary(mov): $6 -> !0
 Assign: !0 -> x
 Binary(mov): $200 -> !1
@@ -117,14 +117,14 @@ Label: 4540158416
 Create the flow graph block representation of the program (with [dot] installed):
 
 ```shell
-$ ./sc -f examples/iffy.sim | dot -T jpeg > flow_graph.jpg
+$ ./sc -f tests/iffy.sim | dot -T jpeg > flow_graph.jpg
 ```
 
 ![flow_graph](http://i.imgur.com/2WgWn4d.jpg)
 
 ### test
 
-This program runs all of the executables in examples/ and reports on any that fail to run.
+This program runs all of the executables in tests/ and reports on any that fail to run.
 test can be given any option and that option will be run on each executable.
 
 Run the testing suite:
