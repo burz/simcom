@@ -2,12 +2,15 @@ import intermediate_code_generator
 
 class Block(object):
   handle = -1
+  block_id = -1
   def __init__(self):
     self.lines = []
     self.parents = []
     self.next_block = False
     self.jump_block = False
     self.printed = False
+    Block.block_id += 1
+    self.block_id = Block.block_id
   def new_node(self):
     Block.handle += 1
     return "node_block_{}".format(Block.handle)

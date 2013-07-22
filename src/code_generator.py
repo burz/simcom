@@ -89,8 +89,20 @@ class Code_generator(object):
     left, right = self.descriptors.get_registers(compare.left_value, compare.right_value)
     self.code.append("\t\tcmpq\t{}, {}".format(left, right))
   def generate_unconditional_jump(self, jump):
-    self.code.append("\t\tjmp\t\t{}".format(jump.block))
+    self.code.append("\t\tjmp\t\t__block__{}".format(jump.block.block_id))
   def generate_conditional_jump(self, jump):
+    if jump.operation == '=':
+      self.code.append("\t\tje\t\t__block__{}".format(jump.block.block_id))
+    elif jump.operation == '#':
+      self.code.append("\t\tjne\t\t__block__{}".format(jump.block.block_id))
+    elif jump.operation == '<':
+      self.code.append("\t\tjl\t\t__block__{}".format(jump.block.block_id))
+    elif jump.operation == '>':
+      self.code.append("\t\tjg\t\t__block__{}".format(jump.block.block_id))
+    elif jump.operation == '<=':
+      self.code.append("\t\tjle\t\t__block__{}".format(jump.block.block_id))
+    else: # >=
+      self.code.append("\t\tjge\t\t__block__{}".format(jump.block.block_id))
   def generate_call(self, call):
   def generate_write(self, write):
   def generate_read(self, read):
