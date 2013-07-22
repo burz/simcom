@@ -82,9 +82,12 @@ class Code_generator(object):
     else:
       self.code.append("\t\t{}\t{}, {}".format(binary.operation, left, right))
   def generate_division(self, division):
+# Clear register descriptors for %rax and %rdx
     left, right = self.descriptors.get_registers(division.left_value, division.right_value)
     self.code.append("\t\tidivq\t{}, {}".format(left, right))
   def generate_compare(self, compare):
+    left, right = self.descriptors.get_registers(compare.left_value, compare.right_value)
+    self.code.append("\t\tcmpq\t{}, {}".format(left, right))
   def generate_unconditional_jump(self, jump):
   def generate_conditional_jump(self, jump):
   def generate_call(self, call):
