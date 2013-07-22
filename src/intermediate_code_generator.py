@@ -250,7 +250,7 @@ class Intermediate_code_generator(object):
       compare = Compare('$0', right)
       self.lines.append(compare)
       no_error = Label()
-      conditional_jump = Conditional_jump('#', Label())
+      conditional_jump = Conditional_jump('#', no_error)
       self.lines.append(conditional_jump)
       if binary.operator == 'DIV':
         div_by_zero = Div_by_zero(binary.line)
