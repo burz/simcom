@@ -37,7 +37,15 @@ class Code_generator(object):
     self.flow_graph = flow_graph
     self.descriptors = Location_descriptors()
     self.code = []
+    self.read_only_declarations = []
     self.generate_block(flow_graph.start)
+    self.reset_library()
+  def reset_library(self):
+    self.div_by_zero = False
+    self.mod_by_zero = False
+    self.bad_index = False
+    self.write_output = False
+    self.read_input = False
   def generate_block(self, block):
     for line in block.lines:
       self.generate_line(line)
@@ -78,4 +86,41 @@ class Code_generator(object):
   def generate_bad_index(self, bad_index):
   def generate_div_by_zero(self, div_by_zero):
   def generate_mod_by_zero(self, mod_by_zero):
+  def link_library(self):
+    evaluated_to_zero = False
+    stderr_printing = False
+    write_code = False
+    if self.div_by_zero:
+      self.code.append(code_library.error_div_by_zero_code)
+      decl = '_div_error:\t\t.ascii "error: The right side of the DIV expression on line "'
+      self.read_only_declarations.append(decl)
+      evaluated_to_zero = True
+      stderr_printing = True
+    if self.mod_by_zero:
+      self.code.append(code_library.error_mod_by_zero_code)
+      decl = '_mod_error:\t\t.ascii "error: The right size of the MOD expression on line "'
+      self.read_only_declarations.append(decl)
+      evaluated_to_zero = True
+      stderr_printing = True
+    if evaluated_to_zero:
+      self.read_only_declarations.append('_zero_end:\t\t.ascii ") evaluated to zero\\n"')
+    if self.bad_index:
+      self.code.append(code_library.error_bad_index_code)
+      decl = '_index_range:\t.ascii "error: Index out of range: the expression on line "'
+      self.read_only_declarations.append(decl)
+      self.read_only_declarations.append('_evaluated_to:\t.ascii " evaluated to "')
+      stderr_printing = True
+    if self.write_output:
+      self.code.append(code_library.write_stdout_code)
+      write_code = True
+    if stderr_printing:
+      self.code.append(code_library.write_stderr_code)
+      write_code = True
+    if write_code:
+      self.code.append(code_library.write_code)
+    if self.read_input:
+      self.code.append(code_library.read_code)
+      self.code.append(code_library.error_bad_input_code)
+      decl = '_bad_input:\t\t.ascii "error: The input was not an integer\\n"'
+      self.read_only_declarations.append(decl)
 
