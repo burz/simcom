@@ -58,6 +58,7 @@ class Flow_graph(object):
     self.intermediate_code = intermediate_code
     self.labeled_blocks = {}
     self.generate_blocks()
+    self.attach_liveness()
   def new_node(self):
     Flow_graph.node += 1
     return "node_flow_{}".format(Flow_graph.node)
@@ -106,6 +107,51 @@ class Flow_graph(object):
       else:
         current_block.add_line(line)
       self.next_line()
+  def attach_liveness(self):
+    blocks = []
+    current_block = self.start
+    while not current_block.is_end():
+      blocks[:0] = [current_block]
+      current_block = current_block.next_block
+    self.live = {}
+    for block in blocks[::-1]:
+      block.live_on_exit = []  
+      for location in self.live:
+        if self.live[location]:
+          block.live_on_exit.append(self.live[location])
+      for line in block.lines[::-1]:
+        if type(line) is intermediate_code_generator.Assign:
+          line.location_live = self.lookup_status(line.location_value)
+          line.expression_live = self.lookup_status(line.expression_value)
+          self.set_status(line.location_value, False)
+          self.set_status(line.expression_value, True)
+        elif type(line) in [intermediate_code_generator.Binary,
+                            intermediate_code_generator.Division,
+                            intermediate_code_generator.Compare]:
+          line.left_live = self.lookup_status(line.left_value)
+          line.right_live = self.lookup_status(line.right_value)
+          self.set_status(line.left_value, True)
+          self.set_status(line.right_value, True)
+        elif type(line) in [intermediate_code_generator.Call,
+                            intermediate_code_generator.Read]:
+          for location in self.live:
+            self.set_status(location, False)
+        elif type(line) is intermediate_code_generator.Write:
+          line.value_live = self.lookup_status(line.value)
+          for location in self.live:
+            self.set_status(location, False)
+          self.set_status(line.value, True)
+      block.live_on_entry = []  
+      for location in self.live:
+        if self.live[location]:
+          block.live_on_entry.append(self.live[location])
+  def set_status(self, location, live):
+    if not location[0] == '$':
+      self.live[location] = live
+  def lookup_status(self, location):
+    if not location in self.live:
+      return False
+    return self.live[location]
   def graphical(self):
     print 'digraph X {'
     start = self.new_node()
