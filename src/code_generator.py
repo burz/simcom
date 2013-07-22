@@ -1,3 +1,5 @@
+import symbol_table
+
 registers = ['%rax', '%rcx', '%rdx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11']
 callee_registers = ['%rbx', '%r12', '%r13', '%r14', '%r15']
 
@@ -75,10 +77,29 @@ class Code_generator(object):
     elif type(line) is intermediate_code_generator.Mod_by_zero:
       self.generate_mod_by_zero(line)
   def generate_assign(self, assign):
+# Implement aliasing
+    location, expression = self.descriptors.get_registers(assign.location_value,
+                                                          assign.expression_value)
+    if assign.type_object is symbol_table.Integer:
+      self.code.append("\t\tmovq\t{}, {}".format(expression, location))
+    else:
+      n = assign.type_object.get_size() / INTEGER_SIZE
+      handle = self.new_handle()
+      temp_register = self.get_right_register()
+      count_register = self.get_right_register()
+      self.code.append("_assign_loop_{}".format(handle))
+      self.code.append("\t\tmovq\t({}), {}".format(expression, temp_register))
+      self.code.append("\t\tmovq\t{}, ({})".format(temp_register, location))
+      self.code.append("\t\tsubq\t$1, {}".format(count_register))
+      self.code.append("\t\tjz\t\t_end_assign_loop_{}".format(handle))
+      self.code.append("\t\taddq\t${}, {}".format(INTEGER_SIZE, expression))
+      self.code.append("\t\taddq\t${}, {}".format(INTEGER_SIZE, location))
+      self.code.append("\t\tjmp\t\t_assign_loop_{}".format(handle)
+      self.code.append("_end_assign_loop_{}:")
   def generate_binary(self, binary):
     left, right = self.descriptors.get_registers(binary.left_value, binary.right_value)
     if binary.operation == 'mov_mem':
-      self.code.append("\t\tmov\t({}), {}".format(left, right))
+      self.code.append("\t\tmovq\t({}), {}".format(left, right))
     else:
       self.code.append("\t\t{}\t{}, {}".format(binary.operation, left, right))
   def generate_division(self, division):
