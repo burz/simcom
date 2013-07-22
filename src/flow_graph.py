@@ -113,7 +113,7 @@ class Flow_graph(object):
   def attach_liveness(self):
     blocks = []
     current_block = self.start
-    while not current_block.is_end():
+    while current_block and not current_block.is_end():
       blocks[:0] = [current_block]
       current_block = current_block.next_block
     self.live = {}
