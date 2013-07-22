@@ -1,9 +1,10 @@
 import syntax_tree
 
 class Assign(object):
-  def __init__(self, location_value, expression_value):
+  def __init__(self, location_value, expression_value, type_object):
     self.location_value = location_value
     self.expression_value = expression_value
+    self.type_object = type_object
   def __repr__(self):
     return "Assign: {} -> {}".format(self.expression_value, self.location_value)
 
@@ -128,7 +129,7 @@ class Intermediate_code_generator(object):
   def generate_assign(self, assign):
     location = self.generate_location_evaluator(assign.location)
     expression = self.generate_expression_evaluator(assign.expression)
-    assign = Assign(location, expression)
+    assign = Assign(location, expression, assign.expression.type_object)
     self.lines.append(assign)
   def generate_if(self, if_statement):
     left = self.generate_expression_evaluator(if_statement.condition.expression_left)
