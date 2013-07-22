@@ -1,5 +1,7 @@
 import symbol_table
 
+INTEGER_SIZE = 8
+
 registers = ['%rax', '%rcx', '%rdx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11']
 callee_registers = ['%rbx', '%r12', '%r13', '%r14', '%r15']
 
@@ -42,12 +44,16 @@ class Code_generator(object):
     self.read_only_declarations = []
     self.generate_block(flow_graph.start)
     self.reset_library()
+    self.handle = -1
   def reset_library(self):
     self.div_by_zero = False
     self.mod_by_zero = False
     self.bad_index = False
     self.write_output = False
     self.read_input = False
+  def new_handle(self):
+    self.handle += 1
+    return self.handle
   def generate_block(self, block):
     for line in block.lines:
       self.generate_line(line)
@@ -87,6 +93,7 @@ class Code_generator(object):
       handle = self.new_handle()
       temp_register = self.get_right_register()
       count_register = self.get_right_register()
+      self.code.append("\t\tmovq ${}, {}".format(n, count_register))
       self.code.append("_assign_loop_{}".format(handle))
       self.code.append("\t\tmovq\t({}), {}".format(expression, temp_register))
       self.code.append("\t\tmovq\t{}, ({})".format(temp_register, location))
@@ -128,6 +135,12 @@ class Code_generator(object):
 # reset register descriptors
     self.code.append("\t\tcall\t_function_{}".format(call.call.defintion.name))
   def generate_write(self, write):
+# reset register descriptors
+    register = self.get_left_register(write.value)
+    if not register[0] == '$' and register == '%rdi':
+      self.code.append("\t\tmovq\t{}, %rdi".format(register))
+    self.code.append('\t\tcall\t__write_stdout')
+    self.write_output = True
   def generate_read(self, read):
   def generate_bad_index(self, bad_index):
   def generate_div_by_zero(self, div_by_zero):
