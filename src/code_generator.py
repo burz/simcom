@@ -91,8 +91,8 @@ class Code_generator(object):
     else:
       n = assign.type_object.get_size() / INTEGER_SIZE
       handle = self.new_handle()
-      temp_register = self.get_right_register()
-      count_register = self.get_right_register()
+      temp_register = self.descriptors.get_right_register()
+      count_register = self.descriptors.get_right_register()
       self.code.append("\t\tmovq ${}, {}".format(n, count_register))
       self.code.append("_assign_loop_{}".format(handle))
       self.code.append("\t\tmovq\t({}), {}".format(expression, temp_register))
@@ -136,7 +136,7 @@ class Code_generator(object):
     self.code.append("\t\tcall\t_function_{}".format(call.call.defintion.name))
   def generate_write(self, write):
 # reset register descriptors
-    register = self.get_left_register(write.value)
+    register = self.descriptors.get_right_register(write.value)
     if not register[0] == '$' and register == '%rdi':
       self.code.append("\t\tmovq\t{}, %rdi".format(register))
     self.code.append('\t\tcall\t__write_stdout')
@@ -145,7 +145,7 @@ class Code_generator(object):
 # reset register descriptors
 # mark %rax as holding >%rax
   def generate_bad_index(self, bad_index):
-    result = self.get_left_register(bad_index.expression)
+    result = self.descriptors.get_right_register(bad_index.expression)
     self.code.append("\t\tmovq\t${}, %rdi".format(bad_index.line))
     self.code.append("\t\tmovq\t{}, %rdx".format(result))
     self.code.append('\t\tjmp\t\t__error_bad_index')
