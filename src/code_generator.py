@@ -147,7 +147,7 @@ class Code_generator(object):
   def generate_bad_index(self, bad_index):
     result = self.descriptors.get_right_register(bad_index.expression)
     self.code.append("\t\tmovq\t${}, %rdi".format(bad_index.line))
-    self.code.append("\t\tmovq\t{}, %rdx".format(result))
+    self.code.append("\t\tmovq\t{}, %rsi".format(result))
     self.code.append('\t\tjmp\t\t__error_bad_index')
     self.bad_index = True
   def generate_div_by_zero(self, div_by_zero):

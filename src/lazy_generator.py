@@ -222,7 +222,7 @@ class Lazy_generator(object):
         self.code.append("\t\tjl\t\t_no_error_{}_".format(self.handle))
         self.code.append("_error_{}_:".format(self.handle))
         self.code.append("\t\tmovq\t${}, %rdi".format(index.expression.line))
-        self.code.append('\t\tmovq\t%rcx, %rdx')
+        self.code.append('\t\tmovq\t%rcx, %rsi')
         self.code.append('\t\tjmp\t\t__error_bad_index')
         self.code.append("_no_error_{}_:".format(self.handle))
         self.code.append("\t\timulq\t${}, %rcx".format(index.type_object.get_size()))
