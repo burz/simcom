@@ -34,6 +34,19 @@ class Location_descriptors(object):
       right_register, new_code = get_right_register(right)
     return left_register, right_register, code + new_code
   def get_left_register(self, left):
+    descriptor = self.get_address_descriptor(left)
+    for location in descriptor:
+      if location[0] == '%':
+        return location, []
+    empty_register = self.empty_register()
+    if empty_register:
+##
+    else:
+      counts = []
+      for register in registers:
+        score = 0
+        for address in self.get_register_descriptor(register)
+          if self.get_address_descriptor(
   def get_right_register(self, right):
 
 class Code_generator(object):
