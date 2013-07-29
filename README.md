@@ -13,7 +13,7 @@ A product of [Peter Fröhlich's](http://gaming.jhu.edu/~phf/) Spring 2013
 In our implementation, the SIMPLE language is a statically typed, imperative language with a single basic data type
 INTEGER as well as two constructive data types ARRAY and RECORD.
 
-Please see the grammar for the language in doc/SIMPLE_grammar.txt, the some of the code in tests/, or the class
+Check out the [the grammar](doc/SIMPLE_grammar.txt) for the language, some of the [tests](tests/), or the class
 website for more information about the SIMPLE language.
 
 ## Executables
