@@ -204,10 +204,11 @@ class Lazy_generator(object):
     if type(location.child) is syntax_tree.Field:
       field = location.child
       self.generate_location_evaluator(field.location)
-      self.code.append('\t\tpopq\t%rax')
       offset = field.location.type_object.get_offset(field.variable.name)
-      self.code.append("\t\taddq\t${}, %rax".format(offset))
-      self.code.append('\t\tpushq\t%rax')
+      if offset:
+        self.code.append('\t\tpopq\t%rax')
+        self.code.append("\t\taddq\t${}, %rax".format(offset))
+        self.code.append('\t\tpushq\t%rax')
     elif type(location.child) is syntax_tree.Index:
       index = location.child
       self.generate_location_evaluator(index.location)
@@ -230,11 +231,12 @@ class Lazy_generator(object):
         self.code.append('\t\tpushq\t%rax')
         self.bad_index = True
       else:
-        self.code.append('\t\tpopq\t%rax')
         value = index.expression.child.table_entry.value
         offset = index.location.type_object.get_offset(value)
-        self.code.append("\t\taddq\t${}, %rax".format(offset))
-        self.code.append('\t\tpushq\t%rax')
+        if offset:
+          self.code.append('\t\tpopq\t%rax')
+          self.code.append("\t\taddq\t${}, %rax".format(offset))
+          self.code.append('\t\tpushq\t%rax')
     elif not self.in_procedure:
       self.code.append("\t\tmovq\t${}_, %rax".format(location.child.name))
       self.code.append('\t\tpushq\t%rax')
