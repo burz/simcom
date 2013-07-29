@@ -19,9 +19,6 @@ Expression = ["+"|"-"] Term {("+"|"-") Term} .
 Term = Factor {("*"|"DIV"|"MOD") Factor} .
 Factor = integer | Designator | "(" Expression ")" | Call .
 
-Formals = Formal { ";" Formal } .
-Formal = IdentifierList ":" Type .
-
 Instructions = Instruction {";" Instruction} .
 Instruction = Assign | If | Repeat | While | Read | Write | Call .
 Assign = Designator ":=" Expression .
@@ -33,9 +30,12 @@ Write = "WRITE" Expression .
 Read = "READ" Designator .
 Call = identifier "(" [Actuals] ")" .
 
+Formals = Formal { ";" Formal } .
+Formal = IdentifierList ":" Type .
+Actuals = ExpressionList .
+
 Designator = identifier Selector .
 Selector = {"[" ExpressionList "]" | "." identifier} .
-Actuals = ExpressionList .
 IdentifierList = identifier {"," identifier} .
 ExpressionList = Expression {"," Expression} .
 

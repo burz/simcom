@@ -6,7 +6,6 @@ PROGRAM args;
   PROCEDURE a(y, z : INTEGER; b : q);
   BEGIN
     WRITE b[3];
-    WRITE y;
     WRITE z + 1
   END a;
 BEGIN

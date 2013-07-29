@@ -1,0 +1,10 @@
+PROGRAM folding;
+ CONST a = 4;
+       b = 90;
+BEGIN
+  WRITE a + b;
+  WRITE a - b;
+  WRITE a * b;
+  WRITE b DIV a;
+  WRITE b MOD a
+END folding.

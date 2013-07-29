@@ -1,35 +1,22 @@
 # Print out an error message when DIV by zero occurs
 #
-# %rdi := the starting position of the binary expression
-# %rsi := the ending position of the binary expression
+# %rdi := the line of the binary expression
 #
-error_div_zero = """__error_div_zero:
+error_div_by_zero_code = """__error_div_by_zero:
 		pushq	%rbx
 		movq	%rdi, %rbx
-		pushq	%r12
-		movq	%rsi, %r12
 		movq	$1, %rax
 		movq	$2, %rdi
 		movq	$_div_error, %rsi
-		movq	$48, %rdx
+		movq	$47, %rdx
 		syscall
 		movq	%rbx, %rdi
 		call	__write_stderr
 		movq	$1, %rax
 		movq	$2, %rdi
-		movb	$44, -2(%rsp)
-		movb	$32, -1(%rsp)
-		leaq	-2(%rsp), %rsi
-		movq	$2, %rdx
-		syscall
-		movq	%r12, %rdi
-		call	__write_stderr
-		movq	$1, %rax
-		movq	$2, %rdi
 		movq	$_zero_end, %rsi
-		movq	$21, %rdx
+		movq	$20, %rdx
 		syscall
-		popq	%r12
 		popq	%rbx
 		movq	$60, %rax
 		movq	$1, %rdi
@@ -37,36 +24,23 @@ error_div_zero = """__error_div_zero:
 
 # Print out an error message when MOD by zero occurs
 #
-# %rdi := the starting position of the binary expression
-# %rsi := the ending position of the binary expression
+# %rdi := the line of the binary expression
 #
-error_mod_zero = """__error_mod_zero:
+error_mod_by_zero_code = """__error_mod_by_zero:
 		pushq	%rbx
 		movq	%rdi, %rbx
-		pushq	%r12
-		movq	%rsi, %r12
 		movq	$1, %rax
 		movq	$2, %rdi
 		movq	$_mod_error, %rsi
-		movq	$48, %rdx
+		movq	$47, %rdx
 		syscall
 		movq	%rbx, %rdi
 		call	__write_stderr
 		movq	$1, %rax
 		movq	$2, %rdi
-		movb	$44, -2(%rsp)
-		movb	$32, -1(%rsp)
-		leaq	-2(%rsp), %rsi
-		movq	$2, %rdx
-		syscall
-		movq	%r12, %rdi
-		call	__write_stderr
-		movq	$1, %rax
-		movq	$2, %rdi
 		movq	$_zero_end, %rsi
-		movq	$21, %rdx
+		movq	$20, %rdx
 		syscall
-		popq	%r12
 		popq	%rbx
 		movq	$60, %rax
 		movq	$1, %rdi
@@ -74,39 +48,27 @@ error_mod_zero = """__error_mod_zero:
 
 # Print out an error message when an index is out of range
 #
-# %rdi := the starting position of the binary expression
-# %rsi := the ending position of the binary expression
-# %rdx := the value the expression evaluated to
+# %rdi := line of the binary expression
+# %rsi := the value the expression evaluated to
 #
-error_index_range_code = """__error_index_range:
+error_bad_index_code = """__error_bad_index:
 		pushq	%rbx
 		movq	%rdi, %rbx
 		pushq	%r12
 		movq	%rsi, %r12
-		pushq	%r13
-		movq	%rdx, %r13
 		movq	$1, %rax
 		movq	$2, %rdi
 		movq	$_index_range, %rsi
-		movq	$46, %rdx
+		movq	$50, %rdx
 		syscall
 		movq	%rbx, %rdi
 		call	__write_stderr
 		movq	$1, %rax
 		movq	$2, %rdi
-		movb	$44, -2(%rsp)
-		movb	$32, -1(%rsp)
-		leaq	-2(%rsp), %rsi
-		movq	$2, %rdx
+		movq	$_evaluated_to, %rsi
+		movq	$14, %rdx
 		syscall
 		movq	%r12, %rdi
-		call	__write_stderr
-		movq	$1, %rax
-		movq	$2, %rdi
-		movq	$_evaluated_to, %rsi
-		movq	$15, %rdx
-		syscall
-		movq	%r13, %rdi
 		call	__write_stderr
 		movq	$1, %rax
 		movq	$2, %rdi
@@ -114,7 +76,6 @@ error_index_range_code = """__error_index_range:
 		leaq	-1(%rsp), %rsi
 		movq	$1, %rdx
 		syscall
-		popq	%r13
 		popq	%r12
 		popq	%rbx
 		movq	$60, %rax
@@ -210,7 +171,7 @@ _write_end:
 
 # Print out an error if the input is not an integer
 #
-error_input = """__error_bad_input:
+error_bad_input_code = """__error_bad_input:
 		movq	$1, %rax
 		movq	$2, %rdi
 		movq	$_bad_input, %rsi

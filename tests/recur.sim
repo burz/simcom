@@ -5,7 +5,7 @@ PROGRAM recur;
       y := -1001
     ELSE
       y := r(y - 1)
-    END;
+    END
     RETURN y
   END r;
 
@@ -15,7 +15,7 @@ PROGRAM recur;
       x := -888
     ELSE
       x := b(x - 2)
-    END;
+    END
     RETURN x
   END a;
 
@@ -25,7 +25,7 @@ PROGRAM recur;
       x := -777
     ELSE
       x := a(x - 1)
-    END;
+    END
     RETURN x
   END b;
 BEGIN

@@ -4,8 +4,8 @@ PROGRAM argg;
 
   PROCEDURE a(y : q) : INTEGER;
   BEGIN
-    y[2] := 5;
-    RETURN 43
+    y[2] := 5
+  RETURN 43
   END a;
 BEGIN
   x[1] := 9;

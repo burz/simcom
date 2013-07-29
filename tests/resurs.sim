@@ -5,13 +5,13 @@ PROGRAM recurs;
     VAR y : INTEGER;
   BEGIN
     x := 76;
-    y := b();
+    y := b()
     RETURN y
   END a;
 
   PROCEDURE b() : INTEGER;
   BEGIN
-    WRITE x;
+    WRITE x
     RETURN 5
   END b;
 BEGIN

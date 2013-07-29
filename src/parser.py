@@ -1,1177 +1,792 @@
-import scanner
 import symbol_table
-import ast
+import syntax_tree
+import interpreter
 
-class Parse_exception(Exception):
+negated_relation = { '=' : '#', '#' : '=', '<' : '>=', '>' : '<=', '<=' : '>', '>=' : '<' }
+
+class Parser_error(Exception):
   def __init__(self, error):
     self.error = error
   def __str__(self):
-    return "error: " + self.error
+    return "error: {}".format(self.error)
 
 class Parser(object):
-  def __init__(self, tokens, graphical = False, create_symbol_table = True, ast = True):
-    """Create a Parser
-
-    tokens := Tokens from a Scanner
-    graphical := the Parser should create a graphical tree
-    create_symbol_table := a symbol table should be created
-    ast := an abstract syntax tress should be created
-
-    """
+  def parse_tokens(self, tokens):
     self.tokens = tokens
-    self.graphical = graphical
-    if graphical:
-      self.stack = []
-      self.number = 0
-    self.create_symbol_table = create_symbol_table
-    self.create_ast = ast
-    if ast:
-      self.create_symbol_table = True
-    if create_symbol_table:
-      self.table = symbol_table.Symbol_table()
-      self.identifiers = []
+    self.symbol_table = symbol_table.Symbol_table()
     self.position = 0
-    self.current_depth = 0
-    self.tree = []
-    self.parsing_definitions = False
-    self.forward_declarations = []
-    self.type_checks = []
-    self.integer_returns = []
-  def _remove_from_tree(self):
-    self.tree.pop()
-    if self.graphical:
-      self.tree.pop()
-      self.stack.pop()
-      self.number -= 1
-  def _get_position(self):
-    return self.tokens[self.position].start_position, self.tokens[self.position].end_position
-  def _get_last_position(self):
-    return self.tokens[self.position - 1].start_position, self.tokens[self.position - 1].end_position
-  def _token_position(self):
-    return self.tokens[self.position].start_position
-  def _token_type(self):
+    self.in_expression = 0
+    instructions = self.Program()
+    if not instructions:
+      raise Parser_error("There is no 'PROGRAM' declared")
+    return instructions, self.symbol_table
+  def token(self):
+    if self.position >= len(self.tokens):
+      return False
+    return self.tokens[self.position]
+  def token_type(self):
+    if self.position >= len(self.tokens):
+      return False
     return self.tokens[self.position].token_type
-  def _last_token_type(self):
-    return self.tokens[self.position - 1].token_type
-  def _get_token(self):
-    return  self.tokens[self.position]
-  def _get_last_token(self):
-    return self.tokens[self.position - 1]
-  def _get_parent(self):
-    if len(self.stack) == 0:
-      return -1
-    while self.stack[len(self.stack) - 1][1] >= self.current_depth:
-      self.stack.pop()
-      if len(self.stack) == 0:
-        return -1
-    return self.stack[len(self.stack) - 1][0]
-  def _add_token(self):
-    if not self.graphical:
-      self.tree.append((False, self.tokens[self.position], self.current_depth))
-    else:
-      label = "L" + str(self.number)
-      self.number += 1
-      if self.tokens[self.position].token_type == "integer":
-        self.tree.append("{} [label=\"{}\",shape=diamond]".format(label, str(self.tokens[self.position].data)))
-      else:
-        self.tree.append("{} [label=\"{}\",shape=diamond]".format(label, self.tokens[self.position].data))
-      last = self._get_parent()
-      if not last == -1:
-        self.tree.append("{} -> {}".format(last, label))
+  def token_line(self):
+    if self.position >= len(self.tokens):
+      return False
+    return self.tokens[self.position].line
+  def next_token(self):
     self.position += 1
-  def _add_non_terminal(self, string):
-    if not self.graphical:
-      self.tree.append((True, string, self.current_depth))
-    else:
-      label = "L" + str(self.number)
-      self.number += 1
-      self.tree.append("{} [label=\"{}\",shape=box]".format(label, string))
-      last = self._get_parent()
-      if not last == -1:
-        self.tree.append("{} -> {}".format(last, label))
-      self.stack.append((label, self.current_depth))
-  def _add_to_scope(self, name, value):
-    return self.table.get_current_scope().insert(name, value)
-  def _get_declaration(self, name):
-    return self.table.get_current_scope().find(name)
-  def _Program(self):
-    if not self._token_type() == "PROGRAM":
-      raise Parse_exception("PROGRAM is not declared")
-    self._add_non_terminal("Program")
-    self.current_depth += 1
-    self._add_token()
-    if not self._Identifier():
-      raise Parse_exception("The Program is not named")
-    program_name = self._get_last_token().data
-    if not self._token_type() == ";":
-      raise Parse_exception("The Program declaration is not terminated with a ';'")
-    self._add_token()
-    if self.create_symbol_table:
-      self.table.push_scope()
-    self.definitions = True
-    self._Declarations()
-    self.definitions = False
-    if self.create_symbol_table and self.forward_declarations:
-      for call in self.forward_declarations:
-        name = call.procedure
-        procedure_entry = self._get_declaration(name)
-        if not procedure_entry:
-          raise symbol_table.Symbol_table_exception("The procedure {} at ({}, {}) is undefined".format(call.procedure, call.start_position, call.end_position))
-        call.procedure = procedure_entry
-        start = call.start_position
-        end = call.end_position
-        if self.create_symbol_table and procedure_entry.formals:
-          if not call.actuals:
-            raise symbol_table.Symbol_table_exception("The call to function {} at ({}, {}) does not have the required number of arguments. Needed {}, given 0".format(name, start, end, len(procedure_entry.formals)))
-          if not len(procedure_entry.formals) is len(call.actuals.expressions):
-            raise symbol_table.Symbol_table_exception("The call to function {} at ({}, {}) does not have the required number of arguments. Needed {}, given {}".format(name, start, end, len(procedure_entry.formals), len(call.actuals.expressions)))
-          for i, formal in enumerate(procedure_entry.formals):
-            if not formal[1] is call.actuals.expressions[i].get_type():
-              raise symbol_table.Symbol_table_exception("The type of argument {} is undefined for the call to {} at ({}, {})".format(i + 1, name, start, end))
-      for check in self.type_checks:
-        if not check[0].get_type() is check[1].get_type():
-          raise ast.AST_exception("The types of the designator at ({}, {}) and the expression at ({}, {}) do not match".format(designator.start_position, designator.end_position, expression.start_position, expression.end_position))
-      for check in self.integer_returns:
-        if not type(check.get_type()) is symbol_table.Integer:
-          raise symbol_table.Symbol_table_exception("The type returned by {} at ({}, {}) is not an integer".format(check.procedure.name, check.start_position, check.end_position))
+  def type_check_binary_operation(self, operator, expression_left, expression_right, line):
+    if not type(expression_right.type_object) in [symbol_table.Integer, symbol_table.Constant]:
+      raise Parser_error("The expression to the left of the '{}' on line {} is not an INTEGER".
+                         format(operator, line))
+    if not type(expression_left.type_object) in [symbol_table.Integer, symbol_table.Constant]:
+      raise Parser_error("The expression to the right of the '{}' on line {} is not an INTEGER".
+                         format(operator, line))
+  def Program(self):
+    if not self.token_type() == 'PROGRAM':
+      return False
+    line = self.token_line()
+    self.next_token()
+    identifier = self.identifier()
+    if not identifier:
+      raise Parser_error("The 'PROGRAM' on line {} is not followed by an identifier".format(line))
+    if not self.token_type() == ';':
+      raise Parser_error("PROGRAM '{}' on line {} is not followed by a ';'".format(
+                         identifier.data, identifier.line))
+    self.next_token()
+    self.Declarations()
     instructions = False
-    if self._token_type() == "BEGIN":
-      start, end = self._get_position()
-      self._add_token()
-      instructions = self._Instructions()
+    if self.token_type() == 'BEGIN':
+      begin_line = self.token_line()
+      self.next_token()
+      instructions = self.Instructions()
       if not instructions:
-        raise Parse_exception("The BEGIN statement at ({}, {}) is not followed by instructions".format(start, end))
-    if not self._token_type() == "END":
-      start, end = self._get_position()
-      raise Parse_exception("Syntax error at ({}, {}), expected an END".format(start, end))
-    start, end = self._get_position()
-    self._add_token()
-    if self.create_symbol_table:
-      self.table.leave_scope()
-    if not self._Identifier():
-      raise Parse_exception("There is no program specified to close after the END at ({}, {})".format(start, end))
-    if not self._get_last_token().data == program_name:
-      raise Parse_exception("The program {} following the END at ({}, {}) is unrecognized".format(self._get_last_token().data, start, end))
-    if not self._token_type() == ".":
-      raise Parse_exception("The program closed at ({}, {}) is not followed by a '.'".format(start, self._get_last_token().end_position))
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_ast:
-      if not instructions:
-        return False
-      else:
-        return ast.AST_tree(instructions)
-  def _Declarations(self):
-    self._add_non_terminal("Declarations")
-    self.current_depth += 1
-    while self._ConstDecl() or self._TypeDecl() or self._VarDecl() or self._ProcDecl():
+        raise Parser_error("The 'BEGIN' on line {} is not followed by any Instructions".format(
+                           begin_line))
+    if not self.token_type() == 'END':
+      raise Parser_error("The 'PROGRAM' on line {} is not terminated by an 'END'".format(line))
+    end_line = self.token_line()
+    self.next_token()
+    final_id = self.identifier()
+    if not final_id:
+      raise Parser_error("The 'END' on line {} is not followed by a program name to close".format(
+                         end_line))
+    if not final_id.data == identifier.data:
+      raise Parser_error(
+             "The name of the program on line {} does not match the name of it's closing on line {}".
+                format(identifier.line, final_id.line))
+    if not self.token_type() == '.':
+      raise Parser_error("The program closing on line {} is not followed by a '.'".format(end_line))
+    self.next_token()
+    return syntax_tree.Syntax_tree(instructions)
+  def Declarations(self):
+    self.in_procedure = False
+    self.forward_declarations = {}
+    self.call_type_checks = []
+    self.argument_number_checks = []
+    while self.ConstDecl() or self.TypeDecl() or self.VarDecl() or self.ProcDecl():
       pass
-    self.current_depth -= 1
-    return True
-  def _ConstDecl(self):
-    if not self._token_type() == "CONST":
+    if self.forward_declarations:
+      error = ''
+      for name, call in self.forward_declarations:
+        error += "       The function '{}' on line {} has not been defined\n".format(name, call.line)
+      raise Parser_error(error[7:-1])
+    for check in self.call_type_checks:
+      if not type(check.type_object) is symbol_table.Integer:
+        raise Parser_error("The call to '{}' on line {} must result in an INTEGER".format(
+                             check.definition.name, check.line))
+  def ConstDecl(self):
+    if not self.token_type() == 'CONST':
       return False
-    self._add_non_terminal("ConstDecl")
-    self.current_depth += 1
-    self._add_token()
-    start = self._token_position()
-    while self._Identifier():
-      if self.create_symbol_table:
-        name = self._get_last_token().data
-        id_start, id_end = self._get_position()
-      if not self._token_type() == "=":
-        raise Parse_exception("The constant at ({}, {}) is not followed by an '='".format(id_start, id_end))
-      else:
-        start_position, end_position = self._get_position()
-        self._add_token()
-        expression = self._Expression()
-        if not expression:
-          raise Parse_exception("The constant at ({}, {}) is not defined".format(id_start, id_end))
-        if self.create_symbol_table:
-          type_object = self._get_declaration("INTEGER")
-          if not type(expression.child) is ast.Number:
-            raise ast.AST_exception("The expression following the constant at ({}, {}) is not constant".format(id_start, id_end))
-          value = expression.child.table_entry.value
-          constant = symbol_table.Constant(start_position, end_position, type_object, value)
-          if not self._add_to_scope(name, constant):
-            old_start = self._get_declaration(name).start_position
-            old_end = self._get_declaration(name).end_position
-            raise symbol_table.Symbol_table_exception("The {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(name, id_start, id_end, old_start, old_end))  
-        if not self._token_type() == ";":
-          raise Parse_exception("The constant declaration at ({}, {}) is not followed by a ';'".format(id_start, id_end))
+    self.next_token()
+    while True:
+      identifier = self.identifier()
+      if not identifier:
+        return True
+      if not self.token_type() == '=':
+        raise Parser_error("The constant declaration of '{}' on line {} is not followed by a '='".
+                            format(identifier.data, identifier.line))
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error(
+                "The constant declaration of '{}' on line {} is not followed by an Expression".
+                  format(identifier.data, identifier.line))
+      if not type(expression.type_object) is symbol_table.Integer:
+        raise Parser_error(
+            "The expression following the constant declaration of '{}' on line {} is not an INTEGER".
+               format(identifier.data, identifier.line))
+      value = interpreter.Interpreter.evaluate_expression(interpreter.Interpreter(), expression)
+      if not self.token_type() == ';':
+        raise Parser_error("The constant declaration of '{}' on line {} is not followed by a ';'".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      constant = symbol_table.Constant(self.symbol_table.integer_singleton, value, expression.line)
+      if not self.symbol_table.insert(identifier.data, constant):
+        previous_definition = self.symbol_table.find(identifier.data)
+        raise Parser_error("The constant delaration of '{}' on line {} ".format(
+                             identifier.data, identifier.line) +
+                           "conflicts with the previous declaration on line {}".format(
+                             previous_definition.line))
+    return True
+  def TypeDecl(self):
+    if not self.token_type() == 'TYPE':
+      return False
+    self.next_token()
+    while True:
+      identifier = self.identifier()
+      if not identifier:
+        return True
+      if not self.token_type() == '=':
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a '='".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      type_object = self.Type()
+      if not type_object:
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a Type".
+                             format(identifier.data, identifier.line))
+      if not self.token_type() == ';':
+        raise Parser_error("The type declaration of '{}' on line {} is not followed by a ';'".
+                             format(identifier.data, identifier.line))
+      self.next_token()
+      if not self.symbol_table.insert(identifier.data, type_object):
+        previous_definition = self.symbol_table.find(identifier.data)
+        raise Parser_error(
+         "The type delaration of '{}' on line {} conflicts with the previous declaration on line {}".
+            format(identifier.data, identifier.line, previous_definition.line))
+    return True
+  def VarDecl(self):
+    if not self.token_type() == 'VAR':
+      return False
+    self.next_token()
+    while True:
+      identifiers = self.IdentifierList()
+      if not identifiers:
+        return True
+      if not self.token_type() == ':':
+        if len(identifiers) is 1:
+          raise Parser_error("The variable declaration of '{}' on line {} is not followed by a ':'".
+                               format(identifiers[0].data, identifiers[0].line))
         else:
-          self._add_token()
-    self.current_depth -= 1
-    return True
-  def _TypeDecl(self):
-    if not self._token_type() == "TYPE":
-      return False
-    self._add_non_terminal("TypeDecl")
-    self.current_depth += 1
-    self._add_token()
-    while self._Identifier():
-      if self.create_symbol_table:
-        token = self._get_last_token()
-        id_start, id_end = self._get_position()
-      if not self._token_type() == "=":
-        raise Parse_exception("The type definition at ({}, {}) is not followed by an '='".format(id_start, id_end))
-      else:
-        self._add_token()
-        type_start = self._get_token().start_position
-        base_type = self._Type()
-        type_end = self._get_last_token().end_position
-        if not base_type:
-          raise Parse_exception("The type at ({}, {}) is not defined".format(type_start, type_end))
-        if self.create_symbol_table:
-          if not self._add_to_scope(token.data, base_type):
-            old_start = self._get_declaration(token.data).start_position
-            old_end = self._get_declaration(token.data).end_position
-            raise symbol_table.Symbol_table_exception("The {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(token.data, id_start, id_end, old_start, old_end))  
-        if not self._token_type() == ";":
-          raise Parse_excpetion("The type declaration at ({}, {}) is not followed by a ';'".format(id_start, type_end))
-        else:
-          self._add_token()
-    self.current_depth -= 1
-    return True
-  def _VarDecl(self):
-    if not self._token_type() == "VAR":
-      return False
-    self._add_non_terminal("VarDecl")
-    self.current_depth += 1
-    self._add_token()
-    start = self._token_position()
-    identifiers = self._IdentifierList()
-    while identifiers:
-      end = self._get_last_token().end_position
-      if not self._token_type() == ":":
-        raise Parse_exception("The variable definition at ({}, {}) is not followed by an ':'".format(start, end))
-      else:
-        self._add_token()
-        type_start = self._get_token().start_position
-        type_object = self._Type()
-        type_end = self._get_last_token().end_position
-        if not type_object:
-          raise Parse_exception("The variable type at ({}, {}) is not defined".format(type_start, type_end))
-        if self.create_symbol_table:
+          error = "The variable declarations of:\n"
           for identifier in identifiers:
-            variable = symbol_table.Variable(identifier.start_position, identifier.end_position, type_object)
-            if not self._add_to_scope(identifier.data, variable):
-              old_start = self._get_declaration(identifier.data).start_position
-              old_end = self._get_declaration(identifier.data).end_position
-              raise symbol_table.Symbol_table_exception("The {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(identifier.data, identifier.start_position, identifier.end_position, old_start, old_end)) 
-        if not self._token_type() == ";":
-          raise Parse_excpetion("The variable declaration at ({}, {}) is not followed by a ';'".format(start, end))
-        self._add_token()
-      identifiers = self._IdentifierList()
-    self.current_depth -= 1
-    return True 
-  def _Type(self):
-    self._add_non_terminal("Type")
-    self.current_depth += 1
-    if self._Identifier():
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        identifier = self._get_last_token()
-        type_object = self._get_declaration(identifier.data)
-        if not type_object:
-          raise symbol_table.Symbol_table_exception("The type {} at ({}, {}) has not been declared".format(identifier.data, identifier.start_position, identifier.end_position))
-        elif not type(type_object) is symbol_table.Record and not type(type_object) is symbol_table.Array and not type(type_object) is symbol_table.Integer:
-          raise symbol_table.Symbol_table_exception("The identifier {} at ({}, {}) is not a type".format(identifier.data, identifier.start_position, identifier.end_position))
-        return type_object
-      else:
-        return True
-    elif self._token_type() == "ARRAY":
-      start, end = self._get_position()
-      self._add_token()
-      if self.create_symbol_table:
-        token = self._get_last_token()
-      expression = self._Expression()
-      if not expression:
-        raise Parse_exception("The ARRAY started at ({}, {}) is not followed by an expression".format(start, end))
-      if self.create_symbol_table and (not type(expression.child) is ast.Number or not expression.child.table_entry.value > 0):
-        raise ast.AST_exception("The length of the ARRAY at ({}, {}) is not an integer greater than zero".format(start, end))
-      if self.create_symbol_table:
-        length = expression.child.table_entry.value
-      if not self._token_type() == "OF":
-        raise Parse_exception("The ARRAY started at ({}, {}) is not followed by an 'OF'".format(start, end))
-      else:
-        self._add_token()
-      element_type = self._Type()
-      if not element_type:
-        raise Parse_exception("The ARRAY started at ({}, {}) has no declared type".format(start, end))
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        return symbol_table.Array(token.start_position, token.end_position, element_type, length) 
-      else:
-        return True
-    elif self._token_type() == "RECORD":
-      start, end = self._get_position()
-      self._add_token()
-      if self.create_symbol_table:
-        token = self._get_last_token()
-        self.table.push_scope()
-      identifiers = self._IdentifierList()
-      while identifiers:
-        if not self._token_type() == ":":
-          raise Parse_exception("The RECORD started at ({}, {}), does not have a ':' following the IdentifierList.".format(start, end))
+            error += "         '{}' on line '{}'\n".format(identifier.data, identifier.line)
+          raise Parser_error(error + "       are not follwed by a ':'")
+      self.next_token()
+      type_object = self.Type()
+      if not type_object:
+        if len(identifiers) is 1:
+          raise Parser_error("The variable declaration of '{}' on line {} is not followed by a Type".
+                               format(identifiers[0].data, identifiers[0].line))
         else:
-          self._add_token()
-          type_object = self._Type()
-          if not type_object:
-            raise Parse_exception("The RECORD started at ({}, {}) has no type following the :".format(start, end))
-          if self.create_symbol_table:
-            for identifier in identifiers:
-              variable = symbol_table.Variable(identifier.start_position, identifier.end_position, type_object)
-              if not self._add_to_scope(identifier.data, variable):
-                old_start = self._get_declaration(identifier.data).start_position
-                old_end = self._get_declaration(identifier.data).end_position
-                raise symbol_table.Symbol_table_exception("The {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(identifier.data, identifier.start_position, identifier.end_position, old_start, old_end))
-          if not self._token_type() == ";":
-            raise Parse_exception("The RECORD started at ({}, {}) has declarations that are not terminated with a ';'".format(start, end))
-          else:
-            self._add_token()
-        identifiers = self._IdentifierList()
-      if not self._token_type() == "END":
-        raise Parse_exception("The RECORD started at ({}, {}) is not terminated by an END".format(start, end))
-      self._add_token()
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        scope = self.table.get_current_scope()
-        self.table.scopes.remove(scope)
-        self.table.leave_scope()
-        return symbol_table.Record(token.start_position, token.end_position, scope)
-      else:
-        return True
-    else:
-      return False
-  def _Expression(self):
-    self._add_non_terminal("Expression")
-    self.current_depth += 1
-    arithmetic = False
-    negation = False
-    if self._token_type() == "+" or self._token_type() == "-":
-      arithmetic = True
-      start = self._get_token().start_position
-      end = self._get_token().end_position
-      if self._token_type() == "-":
-        negation = True
-      self._add_token()
-      term = self._Term()
-      if not term:
-        raise Parse_exception("The {} at ({}, {}) is not followed by a term".format(self._last_token_type(), start, end))
-      if self.create_symbol_table:
-        if type(term.child) is ast.Number:
-          constant = symbol_table.Constant(start, start, self.table.get_int(), -term.child.table_entry.value)
-          number = ast.Number(start, term.end_position, constant)
-          term = ast.Expression(start, term.end_position, number)
+          error = "The variable declarations of:\n"
+          for identifier in identifiers:
+            error += "         '{}' on line '{}'\n".format(identifier.data, identifier.line)
+          raise Parser_error(error + "       are not follwed by a Type")
+      if not self.token_type() == ';':
+        if len(identifiers) is 1:
+          raise Parser_error("The variable declaration of '{}' on line {} is not followed by a ';'".
+                               format(identifiers[0].data, identifiers[0].line))
         else:
-          constant = symbol_table.Constant(start, start, self.table.get_int(), 0)
-          number = ast.Number(start, start, constant)
-          expression = ast.Expression(start, start, number)
-          operator = scanner.Token("-", start, start, "-")
-          binary = ast.Binary(start, term.end_position, operator, expression, term)
-          term = ast.Expression(start, term.end_position, binary)
-    else:
-      term = self._Term()
-      if not term:
-        self._remove_from_tree()
-        self.current_depth -= 1
-        return False
-    terms = [term]
-    while self._token_type() == "+" or self._token_type() == "-":
-      new_start = self._get_token().start_position
-      new_end = self._get_token().end_position
-      terms.append(self._get_token())
-      self._add_token()
-      term = self._Term()
-      if not term:
-        raise Parse_exception("Expected a term after the {} at ({}, {})".format(self._last_token_type(), new_start, new_end))
-      terms.append(term)
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      if len(terms) is 1:
-        last_node = terms[0]
-        if arithmetic and self.definitions and type(last_node.child) is ast.Call and not type(last_node.child.procedure) is symbol_table.Procedure:
-          self.integer_returns.append(last_node.child)
-        elif arithmetic and type(last_node.get_type()) is not symbol_table.Constant and type(last_node.get_type()) is not symbol_table.Integer:
-          raise ast.AST_exception("The term at ({}, {}) is not an integer".format(last_node.start_position, last_node.end_position))
-      else:
-        enum_terms = list(enumerate(terms))
-        last_node = False
-        for i, term in enum_terms[::2]:
-          if self.definitions and type(term.child) is ast.Call and not type(term.child.procedure) is symbol_table.Procedure:
-            self.integer_returns.append(term.child)
-          elif type(term.get_type()) is not symbol_table.Constant and type(term.get_type()) is not symbol_table.Integer:
-            raise ast.AST_exception("The term at ({}, {}) is not an integer".format(term.start_position, term.end_position))
-          if not last_node:
-            last_node = term
-          else:
-            if type(last_node.child) is ast.Number and type(term.child) is ast.Number:
-              if terms[i - 1].data == "+":
-                value = term.child.table_entry.value + last_node.child.table_entry.value
-              else:
-                value = last_node.child.table_entry.value - term.child.table_entry.value
-              constant = symbol_table.Constant(last_node.start_position, term.end_position, self.table.get_int(), value)
-              last_node = ast.Number(last_node.start_position, term.end_position, constant)
-            else:
-              last_node = ast.Binary(last_node.start_position, term.end_position, terms[i - 1], last_node, term)
-            last_node = ast.Expression(last_node.start_position, last_node.end_position, last_node)
-      return last_node
-    else:
-      return True
-  def _Term(self):
-    self._add_non_terminal("Term")
-    self.current_depth += 1
-    factor = self._Factor()
-    if factor:
-      factors = [factor]
-      while self._token_type() == "*" or self._token_type() == "DIV" or self._token_type() == "MOD":
-        factors.append(self._get_token())
-        start, end = self._get_position()
-        self._add_token()
-        factor = self._Factor()
-        if not factor:
-          raise Parse_exception("Expected a factor after the {} at ({}, {})".format(self._last_token_type(), start, end))
-        factors.append(factor)
-      if self.create_symbol_table and len(factors) is 1:
-        last_node = factors[0]
-      elif self.create_symbol_table:
-        enum_terms = list(enumerate(factors))
-        last_node = False
-        for i, factor in enum_terms[::2]:
-          if self.definitions and type(factor.child) is ast.Call and not type(factor.child.procedure) is symbol_table.Procedure:
-            self.integer_returns.append(factor.child)
-          elif type(factor.get_type()) is not symbol_table.Constant and type(factor.get_type()) is not symbol_table.Integer:
-            raise ast.AST_exception("The factor at ({}, {}) is not an integer".format(factor.start_position, factor.end_position))
-          if not last_node:
-            last_node = factor
-          else:
-            if type(factor.child) is ast.Number and factors[i - 1].data == "DIV":
-              if factor.child.table_entry.value is 0:
-                raise AST_exception("The right side of the DIV expression at ({}, {}) evaluated to 0".format(last_node.start_position, factor.end_position))
-            if type(factor.child) is ast.Number and factors[i - 1].data == "MOD":
-              if factor.child.table_entry.value is 0:
-                raise AST_exception("The right side of the MOD expression at ({}, {}) evaluated to 0".format(last_node.start_position, factor.end_position))
-            if type(last_node.child) is ast.Number and type(factor.child) is ast.Number:
-              if factors[i - 1].data == "*":
-                value = last_node.child.table_entry.value * factor.child.table_entry.value
-              elif factors[i - 1].data == "DIV":
-                value = last_node.child.table_entry.value / factor.child.table_entry.value
-              else: # MOD
-                value = factor.child.table_entry.value % last_node.child.table_entry.value
-              constant = symbol_table.Constant(last_node.start_position, factor.end_position, self.table.get_int(), value)
-              number = ast.Number(last_node.start_position, factor.end_position, constant)
-              last_node = ast.Expression(number.start_position, number.end_position, number)
-            elif type(last_node.child) is ast.Number and last_node.child.table_entry.value is 1 and factors[i - 1].data == "*":
-              last_node = factor
-            elif type(last_node.child) is ast.Number and last_node.child.table_entry.value is 0:
-              constant = symbol_table.Constant(last_node.start_position, factor.end_position, self.table.get_int(), 0)
-              number = ast.Number(last_node.start_position, factor.end_position, constant)
-              last_node = ast.Expression(number.start_position, number.end_position, number)
-            elif type(factor.child) is ast.Number and factor.child.table_entry.value is 0:
-              constant = symbol_table.Constant(last_node.start_position, factor.end_position, self.table.get_int(), 0)
-              number = ast.Number(last_node.start_position, factor.end_position, constant)
-              last_node = ast.Expression(number.start_position, number.end_position, number)
-            elif type(factor.child) is ast.Number and factor.child.table_entry.value is 1:
-              continue
-            else:
-              binary = ast.Binary(last_node.start_position, factor.end_position, factors[i - 1], last_node, factor)
-              last_node = ast.Expression(binary.start_position, binary.end_position, binary)
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        return last_node
-      else:
-        return True
-    else:
-      self.current_depth -= 1
-      self._remove_from_tree()
-      return False
-  def _Factor(self):
-    self._add_non_terminal("Factor")
-    self.current_depth += 1
-    integer = self._Integer()
-    if integer:
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        expression = ast.Expression(integer.start_position, integer.end_position, integer)
-        return expression
-      else:
-        return True
-    designator = self._Designator()
-    if designator:
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        expression = ast.Expression(designator.start_position, designator.end_position, designator)
-        return expression
-      else:
-        return True
-    if self._token_type() == "(":
-      start, end = self._get_position()
-      self._add_token()
-      expression = self._Expression()
-      if not expression:
-        raise Parse_exception("The '(' at ({}, {}) does not contain an expression".format(start, end))
-      elif not self._token_type() == ")":
-        raise Parse_exception("The '(' at ({}, {}) is not closed".format(start, end))
-      self._add_token()
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        return expression
-      else:
-        return True
-    call = self._Call()
-    if call:
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        expression = ast.Expression(call.start_position, call.end_position, call)
-        return expression
-      else:
-        return True
-    self._remove_from_tree()
-    self.current_depth -= 1
-    return False
-  def _Instructions(self):
-    self._add_non_terminal("Instructions")
-    self.current_depth += 1
-    instruction = self._Instruction()
-    if not instruction:
-      self.current_depth -= 1
-      return False
-    if self.create_ast:
-      instructions = [instruction]
-    while self._token_type() == ";":
-      self._add_token()
-      instruction = self._Instruction()
-      if not instruction:
-        break
-      if self.create_ast:
-        instructions.append(instruction)
-    self.current_depth -= 1
-    if self.create_ast:
-      return ast.Instructions(instructions[0].start_position, instructions[len(instructions) - 1].end_position, instructions)
-    else:
-      return True
-  def _Instruction(self):
-    self._add_non_terminal("Instruction")
-    self.current_depth += 1
-    If = self._If()
-    if If:
-      self.current_depth -= 1
-      if self.create_ast:
-        return If
-      else:
-        return True
-    repeat = self._Repeat()
-    if repeat:
-      self.current_depth -= 1
-      if self.create_ast:
-        return repeat
-      else:
-        return True
-    While = self._While()
-    if While:
-      self.current_depth -= 1
-      if self.create_ast:
-        return While
-      else:
-        return True
-    read = self._Read()
-    if read:
-      self.current_depth -= 1
-      if self.create_ast:
-        return read
-      else:
-        return True
-    write = self._Write()
-    if write:
-      self.current_depth -= 1
-      if self.create_ast:
-        return write
-      else:
-        return True
-    assign = self._Assign()
-    if assign:
-      self.current_depth -= 1
-      if self.create_ast:
-        return assign 
-      else:
-        return True
-    call = self._Call()
-    if call:
-      self.current_depth -= 1
-      if self.create_ast:
-        return call
-      else:
-        return True
-    self.current_depth -= 1
-    self._remove_from_tree()
-    return False
-  def _Assign(self):
-    self._add_non_terminal("Assign")
-    self.current_depth += 1
-    start = self._get_token().start_position
-    designator = self._Designator()
-    if not designator:
-      self.current_depth -= 1
-      self._remove_from_tree()
-      return False
-    if self.create_ast and type(designator) is ast.Number:
-      raise ast.AST_exception("The designator at ({}, {}) does not represent a variable".format(designator.start_position, designator.end_position))
-    end = self._get_last_token().end_position
-    if not self._token_type() == ":=":
-      raise Parse_exception("There is no assignment operator after the designator at ({}, {})".format(start, end))
-    start, end = self._get_position()
-    self._add_token()
-    expression = self._Expression()
-    if not expression:
-      raise Parse_exception("The assignment := at ({}, {}) is not defined".format(start, end))
-    self.current_depth -= 1
-    if self.create_ast:
-      if self.definitions and type(expression.child) is ast.Call and not type(expression.child.procedure) is symbol_table.Procedure:
-        self.type_checks.append((designator, expression))
-      elif not designator.get_type() is expression.get_type():
-        raise ast.AST_exception("The types of the designator at ({}, {}) and the expression at ({}, {}) do not match".format(designator.start_position, designator.end_position, expression.start_position, expression.end_position))
-      return ast.Assign(designator.start_position, expression.end_position, designator, expression)
-    else:
-      return True
-  def _If(self):
-    if not self._token_type() == "IF":
-      return False
-    self._add_non_terminal("If")
-    self.current_depth += 1
-    start, end = self._get_position()
-    self._add_token()
-    condition = self._Condition()
-    if not condition:
-      raise Parse_exception("The IF statement at ({}, {}) is not followed by a condition".format(start, end))
-    if not self._token_type() == "THEN":
-      raise Parse_exception("The IF statement at ({}, {}) is not followed by a THEN".format(start, end))
-    then_start, then_end = self._get_position()
-    self._add_token()
-    instructions_true = self._Instructions()
-    if not instructions_true:
-      raise Parse_exception("The THEN statement at ({}, {}) is not followed by any instructions".format(then_start, then_end))
-    instructions_false = False
-    if self._token_type() == "ELSE":
-      else_start, else_end = self._get_position()
-      self._add_token()
-      instructions_false = self._Instructions()
-      if not instructions_false:
-        raise Parse_exception("The ELSE at ({}, {}) is not followed by any instructions".format(else_start, else_end))
-    if not self._token_type() == "END":
-      raise Parse_exception("The IF at ({}, {}) is not followed by an END".format(start, end))
-    end = self._get_token().end_position
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_ast:
-      return ast.If(start, end, condition, instructions_true, instructions_false)
-    else:
-      return True
-  def _Repeat(self):
-    if not self._token_type() == "REPEAT":
-      return False
-    self._add_non_terminal("Repeat")
-    self.current_depth += 1
-    start, end = self._get_position()
-    self._add_token()
-    instructions = self._Instructions()
-    if not instructions:
-      raise Parse_exception("The REPEAT at ({}, {}) is not followed by any instructions".format(start, end))
-    if not self._token_type() == "UNTIL":
-      raise Parse_exception("The REPEAT at ({}, {}) is not followed by an UNTIL".format(start, end))
-    until_start, until_end = self._get_position()
-    self._add_token()
-    condition = self._Condition()
-    if not condition:
-      raise Parse_exception("The UNTIL at ({}, {}) is not followed by a condition".format(until_start, until_end))
-    if not self._token_type() == "END":
-      raise Parse_exception("The REPEAT at ({}, {}) is not terminated by an END".format(start, end))
-    end = self._get_token().end_position
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_ast:
-      return ast.Repeat(start, end, condition, instructions)
-    else:
-      return True
-  def _While(self):
-    if not self._token_type() == "WHILE":
-      return False
-    self._add_non_terminal("While")
-    self.current_depth += 1
-    start, end = self._get_position()
-    self._add_token()
-    condition = self._Condition()
-    if not condition:
-      raise Parse_exception("The WHILE at ({}, {}) is not followed by a condition".format(start, end))
-    if not self._token_type() == "DO":
-      raise Parse_exception("The WHILE at ({}, {}) is not followed by a DO".format(start, end))
-    do_start, do_end = self._get_position()
-    self._add_token()
-    instructions = self._Instructions()
-    if not instructions:
-      raise Parse_exception("The DO at ({}, {}) is not followed by any instructions".format(do_start, do_end))
-    if not self._token_type() == "END":
-      raise Parse_exception("The WHILE at ({}, {}) is not followed by an END".format(start, end))
-    end = self._get_token().end_position
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_ast:
-      relation = condition.relation.data
-      if relation == "=":
-        negated_relation = scanner.Token("#", start, start, "#")
-      elif relation == "#":
-        negated_relation = scanner.Token("=", start, start, "=")
-      elif relation == "<":
-        negated_relation = scanner.Token(">=", start, start, ">=")
-      elif relation == ">":
-        negated_relation = scanner.Token("<=", start, start, "<=")
-      elif relation == "<=":
-        negated_relation = scanner.Token(">", start, start, ">")
-      else:
-        negated_relation = scanner.Token("<", start, start, "<")
-      negated_condition = ast.Condition(start, start, negated_relation, condition.expression_left, condition.expression_right)
-      repeat = ast.Repeat(start, end, negated_condition, instructions)
-      instructions = ast.Instructions(start, end, [repeat])
-      return ast.If(start, end, condition, instructions, False)
-    else:
-      return True
-  def _Condition(self):
-    self._add_non_terminal("Condition")
-    self.current_depth += 1
-    start, end = self._get_position()
-    expression_left = self._Expression()
-    if not expression_left:
-      self._remove_from_tree()
-      self.current_depth -= 1
-      return False
-    if not (self._token_type() == "=" or self._token_type() == "#" or self._token_type() == "<"):
-      if not (self._token_type() == ">" or self._token_type() == "<=" or self._token_type() == ">="):
-        raise Parse_exception("The condition at ({}, {}) has no operator".format(start, end))
-    relation = self._get_token()
-    self._add_token()
-    expression_right = self._Expression()
-    if not expression_right:
-      raise Parse_exception("The condition at ({}, {}) has no second expression".format(start, end))
-    self.current_depth -= 1
-    if self.create_ast:
-      if not type(expression_left.get_type()) is symbol_table.Constant and not type(expression_left.get_type()) is symbol_table.Integer:
-        raise ast.AST_exception("The expression at ({}, {}) is not an integer".format(expression_left.start_position, expression_left.end_position))
-      if not type(expression_right.get_type()) is symbol_table.Constant and not type(expression_right.get_type()) is symbol_table.Integer:
-        raise ast.AST_exception("The expression at ({}, {}) is not an integer".format(expression_right.start_position, expression_right.end_position))
-      return ast.Condition(expression_left.start_position, expression_right.end_position, relation, expression_left, expression_right)
-    else:
-      return True
-  def _Write(self):
-    if not self._token_type() == "WRITE":
-      return False
-    start, end = self._get_position()
-    self._add_non_terminal("Write")
-    self.current_depth += 1
-    self._add_token()
-    expression = self._Expression()
-    if not expression:
-      raise Parse_exception("The WRITE at ({}, {}) has no specified expression to write".format(start, end))
-    self.current_depth -= 1
-    if self.create_ast:
-      if not type(expression.get_type()) is symbol_table.Constant and not type(expression.get_type()) is symbol_table.Integer:
-        raise ast.AST_exception("The expression at ({}, {}) is not an integer".format(expression.start_position, expression.end_position))
-      return ast.Write(start, expression.end_position, expression)
-    else: 
-      return True
-  def _Read(self):
-    if not self._token_type() == "READ":
-      return False
-    read_start = self._get_token().start_position
-    read_end = self._get_token().end_position
-    self._add_non_terminal("Read")
-    self.current_depth += 1
-    self._add_token()
-    location = self._Designator()
-    if not location:
-      raise Parse_exception("The READ at ({}, {}) has no specified location to read from".format(read_start, read_end))
-    self.current_depth -= 1
-    if self.create_ast:
-      if not type(location) is ast.Variable and not type(location.get_type()) is symbol_table.Integer:
-        raise ast.AST_exception("The location at ({}, {}) following the READ at ({}, {}) is not a variable of type INTEGER".format(location.start_position, location.end_position, read_start, read_end))
-      return ast.Read(read_start, location.end_position, location)
-    else: 
-      return True
-  def _Designator(self):
-    self._add_non_terminal("Designator")
-    self.current_depth += 1
-    if self.create_symbol_table:
-      name = self._get_token().data
-      table_entry = self._get_declaration(name)
-      if not table_entry or type(table_entry) is symbol_table.Procedure:
-        self._remove_from_tree()
-        self.current_depth -= 1
-        return False
-    if not self._Identifier():
-      self._remove_from_tree()
-      self.current_depth -= 1
-      return False
-    if self._token_type() == "(":
-        self._remove_from_tree()
-        self._remove_from_tree()
-        self.position -= 1
-        self.current_depth -= 1
-        return False
-    if self.create_symbol_table:
-      start_position, end_position = self._get_last_position()
-      if type(table_entry) is symbol_table.Record or type(table_entry) is symbol_table.Array or type(table_entry) is symbol_table.Integer:
-        raise ast.AST_exception("{} at ({}, {}) is a type".format(name, start_position, end_position))
-      if type(table_entry) is symbol_table.Constant:
-        node = ast.Number(start_position, end_position, table_entry)
-        if self._Selector():
-          raise ast.AST_exception("{} at ({}, {}) is a constant and cannot be followed by a selector".format(name, start_position, end_position))
-        self.current_depth -= 1
-        return ast.Number(start_position, end_position, table_entry)
-      elif type(table_entry.type_object) is symbol_table.Record:
-        last_type = True
-      else:
-        last_type = False
-      variable = ast.Variable(start_position, end_position, name, table_entry)
-      last_node = ast.Location(start_position, end_position, variable)
-    selectors = self._Selector()
-    if self.create_symbol_table and selectors:
-      for selector in selectors:
-        if selector[0]:
-          if type(last_node.child) is ast.Variable:
-            if not type(last_node.child.table_entry.type_object) is symbol_table.Record:
-              raise ast.AST_exception("The designator at ({}, {}) is not a record; it has no field {} at ({}, {})".format(last_node.start_position, last_node.end_position, selector[1], selector[2], selector[3]))
-            table_entry = last_node.child.table_entry.type_object.scope_object.find(selector[1])
-          elif not last_type:
-            if not type(last_node.child.location.get_type().element_type) is symbol_table.Record:
-              raise ast.AST_exception("The designator at ({}, {}) is not a record; it has no field {} at ({}, {})".format(last_node.start_position, last_node.end_position, selector[1], selector[2], selector[3]))
-            table_entry = last_node.child.location.get_type().element_type.scope_object.find(selector[1])
-          else:
-            table_entry = last_node.child.variable.table_entry.type_object.scope_object.find(selector[1])
-          if not table_entry:
-            if last_type:
-              raise ast.AST_exception("The field {} at ({},{}) is not defined in the record {}".format(selector[1], selector[2], selector[3], last_node.child.name))
-            else:
-              raise ast.AST_exception("The field {} at ({}, {}) is not defined in the array {}".format(selector[1], selector[2], selector[3], last_node.child.location.child.name))
-          variable = ast.Variable(selector[2], selector[3], selector[1], table_entry)
-          last_node = ast.Field(last_node.start_position, selector[3], last_node, variable)
-          last_type = True
-        else:
-          if not type(last_node.get_type()) is symbol_table.Array:
-            raise ast.AST_exception("the index at ({}, {}) modifies a non-array object".format(selector[2], selector[3]))
-          if type(last_node.child) is ast.Variable:
-            last_node = ast.Index(last_node.start_position, selector[3], last_node, selector[1], last_node.child.table_entry.type_object)
-          elif last_type:
-            last_node = ast.Index(last_node.start_position, selector[3], last_node, selector[1], last_node.child.variable.table_entry.type_object)
-          else:
-            last_node = ast.Index(last_node.start_position, selector[3], last_node, selector[1], last_node.child.table_entry.element_type)
-          if type(selector[1].child) is ast.Number:
-            if not 0 <= selector[1].child.table_entry.value < last_node.table_entry.length:
-              raise symbol_table.Symbol_table_exception("Index {} at ({}, {}) out range for array of length {}".format(selector[1].child.table_entry.value, last_node.start_position, last_node.end_position, last_node.table_entry.length))
-          last_type = False
-        last_node = ast.Location(last_node.start_position, last_node.end_position, last_node)
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      return last_node
-    else:
-      return True
-  def _Selector(self):
-    self._add_non_terminal("Selector")
-    self.current_depth += 1
-    if self.create_symbol_table:
-      selectors = []
-    while self._token_type() == "[" or self._token_type() == ".":
-      if self._token_type() == "[":
-        start, end = self._get_position()
-        self._add_token()
-        expression_list = self._ExpressionList()
-        if not expression_list:
-          raise Parse_exception("There is no ExpressionList in the '[' started at ({}, {})".format(start, end))
-        if not self._token_type() == "]":
-          raise Parse_exception("The '[' started at ({}, {}) is not closed".format(start, end))
-        self._add_token()
-        if self.create_symbol_table:
-          selectors[len(selectors):] = expression_list
-      elif self._token_type() == ".":
-        start, end = self._get_position()
-        self._add_token()
-        if not self._Identifier():
-          raise Parse_exception("The '.' at ({}, {}) is not followed by an identifier".format(start, end))
-        if self.create_symbol_table:
-          selectors.append((True, self._get_last_token().data, self._get_last_token().start_position, self._get_last_token().end_position))
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      return selectors
-    else:
-      return True
-  def _IdentifierList(self):
-    self._add_non_terminal("IdentifierList")
-    self.current_depth += 1
-    start, end = self._get_position()
-    if not self._Identifier():
-      self._remove_from_tree()
-      self.current_depth -= 1
-      return False
-    identifiers = [self._get_last_token()]
-    while self._token_type() == ",":
-      new_start, new_end = self._get_position()
-      self._add_token()
-      if not self._Identifier():
-        raise Parse_exception("In the IdentifierList started at ({}, {}): The ',' at ({}, {}) is not followed by an identifier".format(start, end, new_start, new_end))
-      identifiers.append(self._get_last_token())
-    self.current_depth -= 1
-    return identifiers
-  def _ExpressionList(self):
-    self._add_non_terminal("ExpressionList")
-    self.current_depth += 1
-    start = self._get_token().start_position
-    end = self._get_token().end_position
-    indices = []
-    expression = self._Expression()
-    if expression:
-      if self.create_symbol_table:
-        indices.append((False, expression, expression.start_position - 1, expression.end_position + 1))
-      while self._token_type() == ",":
-        new_start = self._get_token().start_position
-        new_end = self._get_token().end_position
-        self._add_token()
-        expression = self._Expression()
-        if not expression:
-          raise Parse_exception("In the ExpressionList started at ({}, {}): The ',' at ({}, {}) is not followed by an expression".format(start, end, new_start, new_end))
-        if self.create_symbol_table:
-          indices.append((False, expression, expression.start_position - 1, expression.end_position + 1))
-      self.current_depth -= 1
-      if self.create_symbol_table:
-        return indices
-      else:
-        return True
-    else:
-      self._remove_from_tree()
-      self.current_depth -= 1
-      return False
-  def _Identifier(self):
-    if not self._token_type() == "identifier":
-      return False
-    data = self._get_token().data
-    self._add_token()
-    return data
-  def _Integer(self):
-    if not self._token_type() == "integer":
-      return False
-    self._add_token()
-    if self.create_symbol_table:
-      value = self._get_last_token().data
-      start = self._get_last_token().start_position
-      end = self._get_last_token().end_position
-      constant = symbol_table.Constant(start, end, self.table.get_int(), value)
-      return ast.Number(start, end, constant)
-    else:
-      return True
-  def _ProcDecl(self):
-    if not self._token_type() == "PROCEDURE":
-      return False
-    self._add_non_terminal("ProcDecl")
-    self.current_depth += 1
-    proc_start, proc_end = self._get_position()
-    self._add_token()
-    name = self._get_token().data
-    name_start, name_end = self._get_position()
-    if not self._Identifier():
-      raise Parse_exception("The PROCEDURE at ({}, {}) is not named".format(proc_start, proc_end))
-    if not self._token_type() == "(":
-      raise Parse_exception("The PROCEDURE {} at ({}, {}) is not folled by a '('".format(proc_start, proc_end))
-    start = self._get_position()[0]
-    self._add_token()
-    if self.create_symbol_table:
-      self.table.push_scope()
-    formals = self._Formals()
-    if self.create_symbol_table and formals:
-      for formal in formals:
-        variable = symbol_table.Variable(formal[0].start_position, formal[0].end_position, formal[1])
-        if not self._add_to_scope(formal[0].data, variable):
-          previous = self._get_declaration(formal[0].data)
-          raise Parse_exception("The variable {} at ({}, {}) was already declared at ({}, {})".format(formal[0].data, formal[0].start_position, formal[0].end_position, previous.start_position, previous.end_position))
-    if not self._token_type() == ")":
-      raise Parse_exception("The '(' at ({}, {}) is not closed".format(start, start))
-    self._add_token()
-    return_type = False
-    if self._token_type() == ":":
-      start = self._get_position()[0]
-      self._add_token()
-      return_type = self._Type()
-      if not return_type:
-        raise Parse_exception("The ':' at ({}, {}) is not followed by a return type".format(start, start))
-    if not self._token_type() == ";":
-      raise Parse_exception("The PROCEDURE name declaration at ({}, {}) is not followed by a ';'".format(proc_start, name_end))
-    self._add_token()
-    self._VarDecl()
-    instructions = False
-    if self._token_type() == "BEGIN":
-      self._add_token()
-      instructions = self._Instructions()
-    return_expression = False
-    if self._token_type() == "RETURN":
-      start, end = self._get_position()
-      self._add_token()
-      return_expression = self._Expression()
-      if not return_expression:
-        raise Parse_exception("The RETURN at ({}, {}) is not followed by an expression".format(start, end))
-      if self.create_symbol_table:
-        if not return_expression.get_type() == return_type:
-          raise symbol_table.Symbol_table_exception("The declared return type does not match the return expression at ({}, {})".format(return_expression.start_position, return_expression.end_position))
-    if self.create_symbol_table:
-      scope = self.table.get_current_scope()
-      self.table.scopes.remove(scope)
-      self.table.leave_scope()
-    if not self._token_type() == "END":
-      raise Parse_exception("The PROCEDURE declaration at ({}, {}) is not followed by an END".format(proc_start, proc_end))
-    start, end = self._get_position()
-    self._add_token()
-    end_name = self._get_token().data
-    name2_start, name2_end = self._get_position()
-    if not self._Identifier():
-      raise Parse_exception("The END at ({}, {}) is not followed by a procedure name".format(start, end))
-    if not end_name == name:
-      raise Parse_exception("The procedure {} at ({}, {}) does not match the label {} at at its closing at ({}, {})".format(name, name_start, name_end, end_name, name2_start, name2_end))
-    if not self._token_type() == ";":
-      raise Parse_exception("The PROCEDURE declaration at ({}, {}) is not followed by a ';'".format(proc_start, name2_end))
-    end = self._get_position()[1]
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      procedure = symbol_table.Procedure(proc_start, end, name, formals, return_type, scope, instructions, return_expression)
-      if not self._add_to_scope(name, procedure):
-        previous = self._get_declaration(name)
-        raise symbol_table.Symbol_table_exception("The declaration of {} at ({}, {}) conflicts with the previous declaration at ({}, {})".format(name, proc_start, end, previous.start_position, previous.end_position))
+          error = "The variable declarations of:\n"
+          for identifier in identifiers:
+            error += "         '{}' on line '{}'\n".format(identifier.data, identifier.line)
+          raise Parser_error(error + "       are not follwed by a ';'")
+      self.next_token()
+      for identifier in identifiers:
+        if not self.symbol_table.insert(identifier.data, type_object):
+          previous_definition = self.symbol_table.find(identifier.data)
+          raise Parser_error("The variable declaration of '{}' on line {} ".format(
+                               identifier.data, identifier.line) +
+                             "conflicts with the previous declaration at {}".format(
+                               previous_definition.line))
     return True
-  def _Formals(self):
-    self._add_non_terminal("Formals")
-    self.current_depth += 1
-    formal = self._Formal()
+  def ProcDecl(self):
+    if not self.token_type() == 'PROCEDURE':
+      return False
+    self.in_procedure = True
+    line = self.token_line()
+    self.next_token()
+    identifier = self.identifier()
+    if not identifier:
+      raise Parser_error("The 'PROCEDURE' on line {} is not followed by an identifier".format(line)) 
+    if not self.token_type() == '(':
+      raise Parser_error("The procedure declaration of '{}' on line {} is not followed by a '('".
+                           format(identifier.data, line))
+    par_line = self.token_line()
+    self.next_token()
+    self.symbol_table.push_scope()
+    formals = self.Formals()
+    if not self.token_type() == ')':
+      raise Parser_error("The '(' on line {} is not terminated by a ')'".format(par_line))
+    self.next_token()
+    return_type_object = False
+    if self.token_type() == ':':
+      return_type_line = self.token_line()
+      self.next_token()
+      return_type_object = self.Type()
+      if not return_type_object:
+        raise Parser_error("The ':' on line {} is not followed by a Type".format(return_type_line))
+    if not self.token_type() == ';':
+      raise Parser_error("The procedure declaration of '{}' on line {} is not followed by a ';'".
+                           format(identifier.data, line))
+    self.next_token()
+    while self.VarDecl():
+      pass
+    instructions = False
+    if self.token_type() == 'BEGIN':
+      begin_line = self.token_line()
+      self.next_token()
+      instructions = self.Instructions()
+      if not instructions:
+        raise Parser_error("The 'BEGIN' on line {} is not followed by any Instructions".format(
+                             begin_line))
+    return_expression = False
+    return_line = False
+    if self.token_type() == 'RETURN':
+      return_line = self.token_line()
+      self.next_token()
+      return_expression = self.Expression()
+      if not return_expression:
+        raise Parser_error("The 'RETURN' on line {} is not followed by an Expression".format(
+                             return_line))
+      if not return_expression.type_object is return_type_object:
+        raise Parser_error(
+                "The return type defined for '{}' on line {} does not match the type of the".
+                  format(identifier.data, line) +
+                "return expression on line {}".format(return_line))
+    elif return_type_object:
+      raise Parser_error(
+              "Expected a return statement in the procedure declaration of '{}' on line {}".
+                format(identifier.data, line))
+    if not self.token_type() == 'END':
+      raise Parser_error("The procedure declaration of '{}' on line {} is not followed by an 'END'".
+                           format(identifier.data, line))
+    end_line = self.token_line()
+    self.next_token()
+    closing_name = self.identifier()
+    if not closing_name:
+      raise Parser_error("The 'END' on line {} is not followed by a procedure name to close".format(
+                           end_line))
+    if not closing_name.data == identifier.data:
+      raise Parser_error("Expected a closing of procedure '{}'; got '{}' on line {}".format(
+                           identifier.data, closing_name.data, closing_name.line))
+    if not self.token_type() == ';':
+      raise Parser_error("Expected a ';' following the closing of the procedure '{}' on line {}".
+                           format(closing_name.data, closing_name.line))
+    self.next_token()
+    scope = self.symbol_table.pop_scope()
+    procedure = symbol_table.Procedure(identifier.data, formals, scope, return_type_object,
+                                       instructions, return_expression, line)
+    if not self.symbol_table.insert(identifier.data, procedure):
+      previous_definition = self.symbol_table.find(identifier.data)
+      raise Parser_error("The procedure definition of '{}' on line {} ".format(
+                           identifier.data, line) +
+                         "conflicts with the previous declaration on line {}".format(
+                           previous_definition.line))
+    self.in_procedure = False
+    if self.forward_declarations:
+      delete = []
+      for name, calls in self.forward_declarations.iteritems():
+        if name == identifier.data:
+          for call in calls:
+            call.definition = procedure
+            call.type_object = return_type_object
+          delete.append(name)
+      for name in delete:
+        del self.forward_declarations[name]
+    return True
+  def Type(self):
+    identifier = self.identifier()
+    if identifier:
+      definition = self.symbol_table.find(identifier.data)
+      if not type(definition) in [symbol_table.Integer, symbol_table.Array, symbol_table.Record]:
+        raise Parser_error("The identifier '{}' on line {} does not name a type".format(
+                           identifier.data, identifier.line))
+      return definition
+    if self.token_type() == 'ARRAY':
+      line = self.token_line()
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error("The 'ARRAY' on line {} is not followed by an Expression".format(line))
+      if not type(expression.type_object) is symbol_table.Integer:
+        raise Parser_error("The Expression following the 'ARRAY' on line {} must be an INTEGER".
+                             format(expression.line))
+      size = interpreter.Interpreter.evaluate_expression(interpreter.Interpreter(), expression)
+      if not self.token_type() == 'OF':
+        raise Parser_error("The 'ARRAY' on line {} is not followed by a 'OF'".format(line))
+      of_line = self.token_line()
+      self.next_token()
+      type_object = self.Type()
+      if not type_object:
+        raise Parser_error("The 'OF' on line {} is not followed by a Type".format(of_line))
+      return symbol_table.Array(type_object, size, line)
+    if self.token_type() == 'RECORD':
+      line = self.token_line()
+      self.next_token()
+      self.symbol_table.push_scope()
+      while True:
+        identifiers = self.IdentifierList()
+        if not identifiers:
+          break
+        if not self.token_type() == ':':
+          raise Parser_error(
+                  "The IdentifierList following the 'RECORD' on line {} is not followed by a ':'".
+                    format(identifiers[0].line))
+        col_line = self.token_line()
+        self.next_token()
+        type_object = self.Type()
+        if not type_object:
+          raise Parser_error("The ':' on line {} is not followed by a Type".format(col_line))
+        if not self.token_type() == ';':
+          raise Parser_error("The field declarations on line {} are not followed by a ';'".
+                               format(col_line))
+        self.next_token()
+        for ident in identifiers:
+          if not self.symbol_table.insert(ident.data, type_object):
+            previous_definition = self.symbol_table.find(ident.data)
+            raise Parser_error(
+                    "The definition of '{}' on line {} conflicts with the previous definition at {}".
+                      format(ident.data, ident.line, previous_definition.line))
+      if not self.token_type() == 'END':
+        raise Parser_error(
+                "The definition of the 'RECORD' on line {} was not terminated by an 'END'".
+                  format(line))
+      self.next_token()
+      scope = self.symbol_table.pop_scope()
+      return symbol_table.Record(scope, line)
+    return False
+  def Expression(self):
+    self.in_expression += 1
+    if self.token_type() == '+':
+      line = self.token_line()
+      self.next_token()
+      term = self.Term()
+      if not term:
+        raise Parser_error("The '+' on line {} is not followed by a Term".format(line))
+    elif self.token_type() == '-':
+      line = self.token_line()
+      self.next_token()
+      term = self.Term()
+      if not term:
+        raise Parser_error("The '-' on line {} is not followed by a Term".format(line))
+      constant = symbol_table.Constant(self.symbol_table.integer_singleton, 0, line)
+      number = syntax_tree.Number(constant, constant.line)
+      expression = syntax_tree.Expression(number, constant.type_object, number.line)
+      self.type_check_binary_operation('-', expression, term, line)
+      binary = syntax_tree.Binary('-', expression, term, line)
+      term = syntax_tree.Expression(binary, constant.type_object, binary.line)
+    else:
+      line = self.token_line
+      term = self.Term()
+      if not term:
+        self.in_expression -= 1
+        return False
+    while self.token_type() in ['+', '-']:
+      op_line = self.token_line()
+      operator = self.token_type()
+      self.next_token()
+      new_term = self.Term()
+      if not new_term:
+        raise Parser_error("The '{}' on line {} is not followed by a Term".format(operator, op_line))
+      self.type_check_binary_operation(operator, term, new_term, op_line)
+      if type(term.child) is syntax_tree.Number and type(new_term.child) is syntax_tree.Number:
+        interp = interpreter.Interpreter()
+        term_result = interp.evaluate_expression(term)
+        new_term_result = interp.evaluate_expression(new_term)
+        if operator == '+':
+          result = term_result + new_term_result
+        else: # -
+          result = term_result - new_term_result
+        constant = symbol_table.Constant(self.symbol_table.integer_singleton, result, op_line)
+        child = syntax_tree.Number(constant, constant.line)
+      else:
+        child = syntax_tree.Binary(operator, term, new_term, op_line)
+      term = syntax_tree.Expression(child, self.symbol_table.integer_singleton, child.line)
+    self.in_expression -= 1
+    return term
+  def Term(self):
+    factor = self.Factor()
+    if not factor:
+      return False
+    while self.token_type() in ['*', 'DIV', 'MOD']:
+      line = self.token_line()
+      operator = self.token_type()
+      self.next_token()
+      new_factor = self.Factor()
+      if not new_factor:
+        raise Parser_error("The '{}' on line {} is not followed by a Factor".format(operator, line))
+      self.type_check_binary_operation(operator, factor, new_factor, line)
+      if type(factor.child) is syntax_tree.Number and type(new_factor.child) is syntax_tree.Number:
+        interp = interpreter.Interpreter()
+        factor_result = interp.evaluate_expression(factor)
+        new_factor_result = interp.evaluate_expression(new_factor)
+        if operator == '*':
+          result = factor_result * new_factor_result
+        elif operator == 'DIV':
+          if new_factor_result is 0:
+            raise Parser_error("The right side of the 'DIV' on line {} evaluated to 0".format(line))
+          result = factor_result / new_factor_result
+        else: # MOD
+          if new_factor_result is 0:
+            raise Parser_error("The right side of the 'MOD' on line {} evaluated to 0".format(line))
+          result = factor_result % new_factor_result
+        constant = symbol_table.Constant(self.symbol_table.integer_singleton, result, line)
+        child = syntax_tree.Number(constant, constant.line)
+      else:
+        child = syntax_tree.Binary(operator, factor, new_factor, line)
+      factor = syntax_tree.Expression(child, self.symbol_table.integer_singleton, child.line)
+    return factor
+  def Factor(self):
+    integer = self.integer()
+    if integer:
+      return integer
+    designator = self.Designator()
+    if designator:
+      if type(designator) is syntax_tree.Number:
+        return syntax_tree.Expression(designator, self.symbol_table.integer_singleton,
+                                      designator.line)
+      return syntax_tree.Expression(designator, designator.type_object, designator.line)
+    if self.token_type() == '(':
+      line = self.token_line()
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error("The '(' on line {} is not followed by an Expression".format(line))
+      if not self.token_type() == ')':
+        raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
+      self.next_token()
+      return expression
+    call = self.Call()
+    if call:
+      return syntax_tree.Expression(call, call.type_object, call.line)
+    return False
+  def Instructions(self):
+    instruction = self.Instruction()
+    if not instruction:
+      return False
+    instructions = [instruction]
+    while self.token_type() == ';':
+      line = self.token_line()
+      self.next_token()
+      instruction = self.Instruction()
+      if not instruction:
+        raise Parser_error("The ';' on line {} is not followed by any instructions".format(line))
+      instructions.append(instruction)
+    return syntax_tree.Instructions(instructions, instructions[0].line)
+  def Instruction(self):
+    instruction = (self.Assign() or self.If() or self.Repeat() or self.While() or self.Read() or
+                   self.Write() or self.Call())
+    if not instruction:
+      return False
+    return syntax_tree.Instruction(instruction, instruction.line)
+  def Assign(self):
+    starting_position = self.position
+    location = self.Designator()
+    if not location:
+      return False
+    if not self.token_type() == ':=':
+      self.position = starting_position
+      return False
+    line = self.token_line()
+    self.next_token()
+    expression = self.Expression()
+    if not expression:
+      raise Parser_error("The ':=' on line {} is not followed by an Expression".format(line))
+    if not type(location.type_object) is type(expression.type_object):
+      raise Parser_error("The types of the location and expression for ':=' on line {} do not match".
+                         format(line))
+    return syntax_tree.Assign(location, expression, line)
+  def If(self):
+    if not self.token_type() == 'IF':
+      return False
+    line = self.token_line()
+    self.next_token()
+    condition = self.Condition()
+    if not condition:
+      raise Parser_error("The 'IF' on line {} is not followed by a Condition".format(line))
+    if not self.token_type() == 'THEN':
+      raise Parser_error("The 'IF' on line {} is not followed by a 'THEN'".format(line))
+    then_line = self.token_line()
+    self.next_token()
+    instructions_true = self.Instructions()
+    if not instructions_true:
+      raise Parser_error("The 'THEN' on line {} is not followed by any Instructions".format(
+                         then_line))
+    instructions_false = False
+    if self.token_type() == 'ELSE':
+      else_line = self.token_line()
+      self.next_token()
+      instructions_false = self.Instructions()
+      if not instructions_false:
+        raise Parser_error("The 'ELSE' on line {} is not followed by any Instructions".format(
+                           else_line))
+    if not self.token_type() == 'END':
+      raise Parser_exception("The 'IF' on line {} is not followed by an 'END'".format(line))
+    self.next_token()
+    return syntax_tree.If(condition, instructions_true, instructions_false, line)
+  def Repeat(self):
+    if not self.token_type() == 'REPEAT':
+      return False
+    line = self.token_line()
+    self.next_token()
+    instructions = self.Instructions()
+    if not instructions:
+      raise Parser_error("The 'REPEAT' on line {} is not followed by any Instructions".format(line))
+    if not self.token_type() == 'UNTIL':
+      raise Parser_error("The 'REPEAT' on line {} is not followed by an 'UNTIL'".format(line))
+    until_line = self.token_line()
+    self.next_token()
+    condition = self.Condition()
+    if not condition:
+      raise Parser_error("The 'UNTIL' on line {} is not followed by a Condition".format(until_line))
+    if not self.token_type() == 'END':
+      raise Parser_error("The 'REPEAT' on line {} is not terminated by an 'END'".format(line))
+    self.next_token()
+    return syntax_tree.Repeat(condition, instructions, line)
+  def While(self):
+    if not self.token_type() == 'WHILE':
+      return False
+    line = self.token_line()
+    self.next_token()
+    condition = self.Condition()
+    if not condition:
+      raise Parser_error("The 'WHILE' on line {} is not followed by a Condition".format(line))
+    if not self.token_type() == 'DO':
+      raise Parser_error("The 'WHILE' on line {} is not followed by a 'DO'".format(line))
+    do_line = self.token_line()
+    self.next_token()
+    instructions = self.Instructions()
+    if not instructions:
+      raise Parser_error("The 'DO' on line {} is not followed by any Instructions".format(do_line))
+    if not self.token_type() == 'END':
+      raise Parser_error("The 'WHILE' on line {} is not teminated by an 'END'".format(line))
+    self.next_token()
+    repeat_relation = negated_relation[condition.relation]
+    repeat_condition = syntax_tree.Condition(repeat_relation, condition.expression_left,
+                                             condition.expression_right, condition.line)
+    repeat = syntax_tree.Repeat(repeat_condition, instructions, repeat_condition.line)
+    instruction = syntax_tree.Instruction(repeat, repeat.line)
+    instructions = syntax_tree.Instructions([instruction], instruction.line)
+    return syntax_tree.If(condition, instructions, False, line)
+  def Condition(self):
+    starting_position = self.position
+    expression_left = self.Expression()
+    if not expression_left:
+      return False
+    relation = self.token()
+    if not relation.data in ['=', '#', '<', '>', '<=', '>=']:
+      self.position = starting_position
+      return False
+    self.next_token()
+    expression_right = self.Expression()
+    if not expression_right:
+      raise Parser_error("There is no Expression following the '{}' on line {}".format(
+                         operator.data, operator.line))
+    self.type_check_binary_operation(relation.data, expression_left, expression_right, relation.line)
+    return syntax_tree.Condition(relation.data, expression_left, expression_right, relation.line)
+  def Write(self):
+    if not self.token_type() == 'WRITE':
+      return False
+    line = self.token_line()
+    self.next_token()
+    expression = self.Expression()
+    if not expression:
+      raise Parser_error("The 'WRITE' on line {} is not followed by an Expression".format(line))
+    if not type(expression.type_object) is symbol_table.Integer:
+      raise Parser_error("The Expression on line {} must result in an INTEGER".format(
+                         expression.line))
+    return syntax_tree.Write(expression, line)
+  def Read(self):
+    if not self.token_type() == 'READ':
+      return False
+    line = self.token_line()
+    self.next_token()
+    designator = self.Designator()
+    if not designator:
+      raise Parser_error("The 'READ' on line {} is not followed by a Designator".format(line))
+    return syntax_tree.Read(designator, line)
+  def Call(self):
+    starting_position = self.position
+    identifier = self.identifier()
+    if not identifier:
+      return False
+    definition = self.symbol_table.find(identifier.data)
+    if not self.token_type() == '(':
+      self.position = starting_position
+      return False
+    forward = False
+    if not definition:
+      if not self.in_procedure:
+        raise Parser_error("The Procedure '{}' on line {} has not been defined".format(
+                             identifier.data, identifier.line))
+      forward = True
+    elif not type(definition) is symbol_table.Procedure:
+      raise Parser_error("'{}' on line {} is not a Procedure".format(
+                           identifier.data, identifier.line))
+    line = self.token_line()
+    self.next_token()
+    actuals = self.Actuals()
+    if forward:
+      if self.in_expression:
+        return_type = self.symbol_table.integer_singleton
+      else:
+        return_type = False
+    else:
+      return_type = definition.type_object
+    call = syntax_tree.Call(definition, actuals, return_type, identifier.line)
+    if not forward:
+      length = len(actuals) if actuals else 0
+      definition_length = len(definition.formals) if definition.formals else 0
+      if length != definition_length:
+        raise Parser_error(
+             "The call to '{}' on line {} does not have the correct number of arguments ({} for {})".
+                  format(identifier.data, identifier.line, length, definition_length))
+    else:
+      self.argument_number_checks.append(call)
+      if not identifier.data in self.forward_declarations:
+        self.forward_declarations[identifier.data] = [call]
+      else:
+        self.forward_declarations[identifier.data].append(call)
+      if self.in_expression:
+        self.call_type_checks.append(call)
+    if not self.token_type() == ')':
+      raise Parser_error("The '(' on line {} is not terminated by a ')'".format(line))
+    self.next_token()
+    return call
+  def Designator(self):
+    starting_position = self.position
+    identifier = self.identifier()
+    if not identifier:
+      return False
+    if self.token_type() == '(':
+      self.position = starting_position
+      return False
+    table_entry = self.symbol_table.find(identifier.data)
+    if not table_entry:
+      self.position = starting_position
+      return False
+    if type(table_entry) is symbol_table.Constant:
+      return syntax_tree.Number(table_entry, identifier.line)
+    selectors = self.Selector()
+    variable = syntax_tree.Variable(identifier.data, table_entry, identifier.line)
+    location = syntax_tree.Location(variable, table_entry, variable.line)
+    for selector in selectors:
+      if type(location.child) == syntax_tree.Variable:
+        definition = location.child.table_entry
+      else:
+        definition = location.child.type_object
+      if type(selector) is syntax_tree.Expression:
+        if not type(definition) is symbol_table.Array:
+          raise Parser_error("The index on line {} does not follow an Array".format(selector.line))
+        index = syntax_tree.Index(location, selector, definition.type_object, selector.line)
+        location = syntax_tree.Location(index, index.type_object, index.line)
+      else:
+        if not type(definition) is symbol_table.Record:
+          raise Parser_error("The field '{}' on line {} does not follow a Record".format(
+                            selector.data, selector.line))
+        table_entry = definition.scope.find(selector.data)
+        if not table_entry:
+          raise Parser_error("The field '{}' on line {} has not been defined".format(
+                             selector.data, selector.line))
+        variable = syntax_tree.Variable(selector.data, table_entry, selector.line)
+        field = syntax_tree.Field(location, variable, table_entry, variable.line)
+        location = syntax_tree.Location(field, table_entry, field.line)
+    return location
+  def Formals(self):
+    formal = self.Formal()
     if not formal:
-      self._remove_from_tree()
-      self.current_depth -= 1
       return False
     formals = []
-    if self.create_symbol_table:
-      for variable in formal[0]:
-        formals.append((variable, formal[1]))
-    while self._token_type() == ";":
-      start = self._get_position()[0]
-      self._add_token()
-      formal = self._Formal()
+    formals += formal
+    while self.token_type() == ';':
+      line = self.token_line()
+      self.next_token()
+      formal = self.Formal()
       if not formal:
-        raise Parse_exception("The ';' at ({}, {}) is not followed by a formal".format(start, start))
-      for variable in formal[0]:
-        formals.append((variable, formal[1]))
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      return formals
-    else:
-      return True
-  def _Formal(self):
-    self._add_non_terminal("Formal")
-    self.current_depth += 1
-    identifiers = self._IdentifierList()
+        raise Parser_error("The ';' on line {} is not followed by a Formal".format(line))
+      formals += formal
+    return formals
+  def Formal(self):
+    line = self.token_line()
+    identifiers = self.IdentifierList()
     if not identifiers:
-      self._remove_from_tree()
-      self.current_depth -= 1
       return False
-    start = identifiers[0].start_position
-    end = identifiers[len(identifiers) - 1].end_position
-    if not self._token_type() == ":":
-      raise Parse_exception("The Formal declaration at ({}, {}) is not followed by a ':'".format(start, end))
-    end = self._get_position()[1]
-    self._add_token()
-    type_object = self._Type()
+    if not self.token_type() == ':':
+      raise Parser_error("The IdentifierList on line {} is not followed by a ':'".format(line))
+    line = self.token_line()
+    self.next_token()
+    type_object = self.Type()
     if not type_object:
-      raise Parse_exception("The Formal declaration at ({}, {}) is not followed by a type".format(start, end))
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      return identifiers, type_object
-    else:
-      return True
-  def _Call(self):
-    self._add_non_terminal("Call")
-    self.current_depth += 1
-    call_start, call_end = self._get_position()
-    procedure = self._Identifier()
-    if not procedure:
-      self._remove_from_tree()
-      self.current_depth -= 1
-      return False
-    if self.create_symbol_table:
-      procedure_entry = self._get_declaration(procedure)
-      forward_declaration = False
-      if not procedure_entry:
-        if self.definitions:
-          forward_declaration = True
-        elif self._token_type() == "(":
-          raise symbol_table.Symbol_table_exception("The process {} at ({}, {}) is undefined".format(procedure, call_start, call_end))
-        else:
-          raise symbol_table.Symbol_table_exception("The identifier {} at ({}, {}) is undefined".format(procedure, call_start, call_end))
-    if not self._token_type() == "(":
-      raise Parse_exception("The procedure call at ({}, {}) is not followed by a '('".format(call_start, call_end))
-    start = self._get_position()[0]
-    self._add_token()
-    actuals = self._Actuals()
-    if self.create_symbol_table and not forward_declaration and procedure_entry.formals:
-      if not actuals:
-        raise symbol_table.Symbol_table_exception("The call to function {} at ({}, {}) does not have the required number of arguments. Needed {}, given 0".format(procedure, call_start, start, len(procedure_entry.formals)))
-      if not len(procedure_entry.formals) is len(actuals.expressions):
-        raise symbol_table.Symbol_table_exception("The call to function {} at ({}, {}) does not have the required number of arguments. Needed {}, given {}".format(procedure, call_start, start, len(procedure_entry.formals), len(actuals.expressions)))
-      for i, formal in enumerate(procedure_entry.formals):
-        if not formal[1] is actuals.expressions[i].get_type():
-          raise symbol_table.Symbol_table_exception("The type of argument {} is undefined for the call to {} at ({}, {})".format(i + 1, procedure, call_start, start))
-    if not self._token_type() == ")":
-      raise Parse_exception("The '(' at ({}, {}) is not closed by a ')'".format(start, start))
-    call_end = self._get_position()[1]
-    self._add_token()
-    self.current_depth -= 1
-    if self.create_symbol_table:
-      if forward_declaration:
-        call = ast.Call(call_start, call_end, procedure, actuals)
-        self.forward_declarations.append(call)
+      raise Parser_error("The ':' on line {} is not followed by a Type".format(line))
+    definitions = []
+    for identifier in identifiers:
+      self.symbol_table.insert(identifier.data, type_object)
+      definitions.append(identifier.data)
+    return definitions
+  def Actuals(self):
+    return self.ExpressionList()
+  def Selector(self):
+    selectors = []
+    while True:
+      if self.token_type() == '[':
+        line = self.token_line()
+        self.next_token()
+        expr_list = self.ExpressionList()
+        if not expr_list:
+          raise Parser_error("The '[' on line {} is not followed by an ExpressionList".format(line))
+        if not self.token_type() == ']':
+          raise Parser_error("The '[' on line {} is not closed by a ']'".format(line))
+        self.next_token()
+        selectors += expr_list
+      elif self.token_type() == '.':
+        self.next_token()
+        identifier = self.identifier()
+        if not identifier:
+          raise Parser_error("The '.' on line {} is not followed by an identifier".format(
+                             self.last_line()))
+        selectors.append(identifier)
       else:
-        call = ast.Call(call_start, call_end, procedure_entry, actuals)
-      return call
-    else:
-      return True
-  def _Actuals(self):
-    self._add_non_terminal("Actuals")
-    self.current_depth += 1
-    expressions = self._ExpressionList()
-    self.current_depth -= 1
-    if not expressions:
-      self._remove_from_tree()
+        break
+    return selectors
+  def IdentifierList(self):
+    identifier = self.identifier()
+    if not identifier:
       return False
-    elif self.create_symbol_table:
-      start = expressions[0][1].start_position
-      end = expressions[len(expressions) - 1][1].end_position
-      old_expressions = expressions
-      expressions = []
-      for expression in old_expressions:
-        expressions.append(expression[1])
-      return ast.Actuals(start, end, expressions)
-    else:
-      return True
-  def print_tree(self):
-    if self.graphical:
-      print "strict digraph CST {"
-      for line in self.tree:
-        print line
-      print "}"
-    else:
-      for line in self.tree:
-        if line[0] == True:
-          print "  " * line[2] + line[1]
-        else:
-          print "  " * line[2] + line[1].__repr__()
-  def parse(self):
-    if self.create_ast:
-      abstract_syntax_tree = self._Program()
-    else:
-      self._Program()
-    if self.create_symbol_table and self.create_ast:
-      return self.table, abstract_syntax_tree
-    elif self.create_symbol_table:
-      return self.table
+    identifiers = [identifier]
+    while self.token_type() == ',':
+      self.next_token()
+      identifier = self.identifier()
+      if not identifier:
+        raise Parser_error("The ',' on line {} is not followed by an identifier".format(
+                           self.last_line()))
+      identifiers.append(identifier)
+    return identifiers
+  def ExpressionList(self):
+    expression = self.Expression()
+    if not expression:
+      return False
+    expressions = [expression]
+    while self.token_type() == ',':
+      self.next_token()
+      expression = self.Expression()
+      if not expression:
+        raise Parser_error("The ',' on line {} is not followed by an expression".format(
+                           self.last_line()))
+      expressions.append(expression)
+    return expressions
+  def identifier(self):
+    if not self.token_type() == 'identifier':
+      return False
+    identifier = self.token()
+    self.next_token()
+    return identifier
+  def integer(self):
+    if not self.token_type() == 'integer':
+      return False
+    constant = symbol_table.Constant(self.symbol_table.integer_singleton, int(self.token().data),
+                                     self.token_line())
+    number = syntax_tree.Number(constant, constant.line)
+    self.next_token()
+    return syntax_tree.Expression(number, constant.type_object, number.line)
 

@@ -12,6 +12,6 @@ BEGIN
   WHILE i > 0 DO
     ule();
   i := i - 1
-  END;
+  END
 END muse.
 

@@ -1,59 +1,68 @@
-import ast
+import symbol_table
 
 class IntegerBox(object):
-  def __init__(self):
-    self.value = 0
+  def __init__(self, value = False):
+    if value:
+      self.value = value
+    else:
+      self.value = 0
   def copy(self):
-    new_box = IntegerBox()
-    new_box.value = self.value
-    return new_box
-  def set_value(self, value):
-    self.value = value
-  def get_value(self):
-    return self.value
+    return IntegerBox(self.value)
+  def set_to(self, integer):
+    self.value = integer.value
 
 class ArrayBox(object):
-  def __init__(self, size, type_instance = False):
+  def __init__(self, size, instance):
     self.size = size
     self.boxes = []
-    if type_instance:
+    if instance:
       for i in range(size):
-        self.boxes.append(type_instance.copy())
+        self.boxes.append(instance.copy())
   def copy(self):
-    new_box = ArrayBox(self.size)
+    new = ArrayBox(self.size, False)
     for box in self.boxes:
-      new_box.boxes.append(box.copy())
-    return new_box
-  def set_to(self, box):
-    self.boxes = box.copy().boxes
+      new.boxes.append(box.copy())
+    return new
+  def set_to(self, array):
+    for this, other in zip(self.boxes, array.boxes):
+      this.set_to(other.copy())
   def get_box(self, index):
     if index >= self.size:
       return False
     return self.boxes[index]
 
 class RecordBox(object):
-  def __init__(self, fields):
-    self.fields = fields
+  def __init__(self, scope):
+    if scope:
+      self.fields = make_environment(scope)
+    else:
+      self.fields = {}
   def copy(self):
-    fields = {}
+    new_fields = {}
     for field in self.fields:
-      fields[field] = self.fields[field].copy()
-    return RecordBox(fields)
-  def set_to(self, box):
-    self.fields = box.copy().fields
+      new_fields[field] = self.fields[field].copy()
+    new = RecordBox(False)
+    new.fields = new_fields
+    return new
+  def set_to(self, record):
+    self.fields = record.copy().fields
   def get_box(self, name):
-    if not name in self.fields:
-      return False
     return self.fields[name]
 
+def make_environment(scope):
+  fields = {}
+  for symbol in scope.symbols:
+    if type(scope.symbols[symbol]) in [symbol_table.Record, symbol_table.Array,
+                                       symbol_table.Integer]:
+      fields[symbol] = scope.symbols[symbol].get_box()
+  return fields
+
 class Environment(object):
-  def __init__(self, table = False):
-    if table:
-      self.boxes = table.get_environment()
-    else:
-      self.boxes = False
+  def __init__(self, scope, parent = False):
+    self.boxes = make_environment(scope)
+    self.parent = parent
   def get_box(self, name):
     if not name in self.boxes:
-      return False
+      return self.parent.get_box(name)
     return self.boxes[name]
 
