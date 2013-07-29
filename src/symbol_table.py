@@ -66,7 +66,7 @@ class Array(Entry):
   def get_size(self):
     return self.size * self.type_object.get_size()
   def get_offset(self, index):
-    return index * self.get_size()
+    return index * self.type_object.get_size()
   def graphical(self):
     if self.printed:
       return self.printed
