@@ -243,7 +243,7 @@ class Lazy_generator(object):
     else:
       variable = location.child
       if variable.name in self.local_variables:
-        offset = self.local_variables.index(variable.name) * 8
+        offset = self.local_variables.index(variable.name) * INTEGER_SIZE
         if not offset:
           self.code.append('\t\tpushq\t%rbx')
         else:
@@ -253,13 +253,13 @@ class Lazy_generator(object):
         offset = -1
         n = 2
         if self.formals:
-          for formal in self.formals:
+          for formal in self.formals[::-1]:
             if formal == variable.name:
-              offset = 8 * n
+              offset = INTEGER_SIZE * n
               break
             n += 1
         if not offset is -1:
-          if location.type_object.get_size() > 8:
+          if location.type_object.get_size() > INTEGER_SIZE:
             self.code.append("\t\tmovq\t{}(%rbp), %rax".format(offset))
           else:
             self.code.append("\t\tleaq\t{}(%rbp), %rax".format(offset))
