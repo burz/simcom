@@ -25,7 +25,7 @@ class Scanner(object):
     self.file_input = filename
     if filename:
       try:
-        self.program_file = open( filename, "r" )
+        self.stream = open( filename, "r" )
       except IOError:
         self.file_input = False
         raise Scanner_error("Could not open '{}'".format(filename))
